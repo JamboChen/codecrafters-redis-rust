@@ -12,7 +12,7 @@ use tokio::{
     spawn,
 };
 
-enum Command {
+pub enum Command {
     Ping,
     Echo(String),
     Set(String, String, Option<u64>),

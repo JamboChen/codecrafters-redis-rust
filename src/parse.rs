@@ -58,7 +58,7 @@ pub async fn parse_command(input: &[u8]) -> Result<Command, Error> {
         "set" => match tokens.len() {
             3 => Command::Set(tokens[1].clone(), tokens[2].clone(), None),
             5 if tokens[3].to_lowercase() == "px" => {
-                let expiry_in_ms = tokens[3].parse::<u64>().unwrap();
+                let expiry_in_ms = tokens[4].parse::<u64>().unwrap();
                 Command::Set(tokens[1].clone(), tokens[2].clone(), Some(expiry_in_ms))
             }
             _ => Command::Unknown,
