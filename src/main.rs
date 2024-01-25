@@ -1,12 +1,16 @@
 use std::{
-    io::Write,
+    io::{Error, Read, Write},
     net::{TcpListener, TcpStream},
 };
 
-fn execute_command(stream: TcpStream) {
-    let resp = "+PONG\r\n";
+fn execute_command(stream: TcpStream) -> Result<(), Error> {
+    let response = "+PONG\r\n";
     let mut stream = stream;
-    stream.write(resp.as_bytes()).expect("write failed");
+    let mut buf = [0; 1024];
+    while let Ok(_) = stream.read(&mut buf) {
+        stream.write(response.as_bytes())?;
+    }
+    Ok(())
 }
 
 fn main() {
@@ -16,7 +20,9 @@ fn main() {
         match stream {
             Ok(_stream) => {
                 println!("accepted new connection");
-                execute_command(_stream)
+                if let Err(e) = execute_command(_stream) {
+                    println!("error: {}", e);
+                }
             }
             Err(e) => {
                 println!("error: {}", e);
