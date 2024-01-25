@@ -13,7 +13,7 @@ use tokio::{
 enum Command {
     Ping,
     Echo(String),
-    Set(String, String),
+    Set(String, String, Option<u64>),
     Get(String),
 }
 
@@ -25,7 +25,6 @@ impl RESPDataType {
 
 // return the offset to skip the parsed data
 async fn parse_lenght(input: &[u8], len: &mut usize) -> usize {
-    println!("input: {:?}", std::str::from_utf8(input));
     let mut pos: usize = 0;
     *len = 0;
     while input[pos] != b'\r' {
@@ -35,9 +34,9 @@ async fn parse_lenght(input: &[u8], len: &mut usize) -> usize {
     pos + 2
 }
 
-async fn parse_bulk_string(input: &[u8], result: &mut String) -> usize {
+async fn parse_bulk_string(input: &[u8], result: &mut String) -> Result<usize, Error> {
     if input[0] != RESPDataType::BULK_STRING {
-        return 0;
+        return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
     }
 
     let mut pos: usize = 1;
@@ -45,7 +44,7 @@ async fn parse_bulk_string(input: &[u8], result: &mut String) -> usize {
     pos += parse_lenght(&input[pos..], &mut string_lemgth).await;
 
     *result = String::from_utf8_lossy(&input[pos..pos + string_lemgth]).to_string();
-    pos + string_lemgth + 2
+    Ok(pos + string_lemgth + 2)
 }
 
 async fn parse_echo_arg(input: &[u8]) -> Result<String, Error> {
@@ -54,14 +53,32 @@ async fn parse_echo_arg(input: &[u8]) -> Result<String, Error> {
     Ok(echo)
 }
 
-async fn parse_set_arg(input: &[u8]) -> Result<(String, String), Error> {
+async fn parse_set_arg(
+    input: &[u8],
+    arg_count: usize,
+) -> Result<(String, String, Option<u64>), Error> {
     let mut key = String::new();
-    let pos = parse_bulk_string(input, &mut key).await;
+    let mut pos = parse_bulk_string(input, &mut key).await?;
 
+    if input[pos] != RESPDataType::BULK_STRING {
+        return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
+    }
     let mut value = String::new();
-    let _ = parse_bulk_string(&input[pos..], &mut value).await;
+    pos += parse_bulk_string(&input[pos..], &mut value).await?;
 
-    Ok((key, value))
+    if arg_count == 2 {
+        return Ok((key, value, None));
+    }
+
+    let mut arg = String::new();
+    pos += parse_bulk_string(&input[pos..], &mut arg).await?;
+    if arg.to_lowercase() != "px" {
+        return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
+    }
+
+    let mut expiry_in_ms = String::new();
+    _ = parse_bulk_string(&input[pos..], &mut expiry_in_ms).await?;
+    Ok((key, value, Some(expiry_in_ms.parse::<u64>().unwrap())))
 }
 
 async fn parse_get_arg(input: &[u8]) -> Result<String, Error> {
@@ -78,7 +95,6 @@ async fn parse_command(input: &[u8]) -> Result<Command, Error> {
     let mut pos: usize = 1;
     let mut args_count = 0;
     pos += parse_lenght(&input[pos..], &mut args_count).await;
-    println!("args_count: {}", args_count);
 
     if input[pos] != RESPDataType::BULK_STRING {
         return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
@@ -87,7 +103,6 @@ async fn parse_command(input: &[u8]) -> Result<Command, Error> {
 
     let mut string_lemgth = 0;
     pos += parse_lenght(&input[pos..], &mut string_lemgth).await;
-    println!("string_lemgth: {}", string_lemgth);
 
     let command = String::from_utf8_lossy(&input[pos..pos + string_lemgth]).to_ascii_uppercase();
     return match command.as_str() {
@@ -101,12 +116,12 @@ async fn parse_command(input: &[u8]) -> Result<Command, Error> {
             Ok(Command::Echo(echo_arg))
         }
         "SET" => {
-            if args_count != 3 {
+            if args_count < 3 {
                 return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
             }
             pos = pos + string_lemgth + 2;
-            let (key, value) = parse_set_arg(&input[pos..]).await?;
-            Ok(Command::Set(key, value))
+            let (key, value, expiry_in_ms) = parse_set_arg(&input[pos..], args_count - 1).await?;
+            Ok(Command::Set(key, value, expiry_in_ms))
         }
         "GET" => {
             if args_count != 2 {
@@ -125,27 +140,28 @@ async fn execute_command(
     command: Command,
     db: &Database,
 ) -> Result<(), Error> {
-    let resp: String;
-    match command {
-        Command::Ping => {
-            resp = "+PONG\r\n".to_string();
-        }
+    let resp: String = match command {
+        Command::Ping => "+PONG\r\n".to_string(),
         Command::Echo(echo_arg) => {
-            resp = format!("+{}\r\n", echo_arg);
+            format!("+{}\r\n", echo_arg)
         }
-        Command::Set(key, value) => {
-            db.set(&key, &value).await;
-            resp = "+OK\r\n".to_string();
-        }
-        Command::Get(key) => match db.get(&key).await {
-            Some(value) => {
-                resp = format!("+{}\r\n", value);
+        Command::Set(key, value, expiry_in_ms) => match expiry_in_ms {
+            Some(expiry_in_ms) => {
+                db.set_with_expire(&key, &value, expiry_in_ms).await;
+                "+OK\r\n".to_string()
             }
             None => {
-                resp = "$-1\r\n".to_string();
+                db.set(&key, &value).await;
+                "+OK\r\n".to_string()
             }
         },
-    }
+        Command::Get(key) => match db.get(&key).await {
+            Some(value) => {
+                format!("+{}\r\n", value)
+            }
+            None => "$-1\r\n".to_string(),
+        },
+    };
 
     stream.write_all(resp.as_bytes()).await?;
     Ok(())
@@ -158,6 +174,7 @@ async fn handle_stream(stream: TcpStream, db: &Database) -> Result<(), Error> {
         if n == 0 {
             break;
         }
+
         match parse_command(&buf[..n]).await {
             Ok(cmd) => execute_command(&mut stream, cmd, db).await?,
 
@@ -214,7 +231,7 @@ mod test {
     async fn test_parse_bulk_string() {
         let input = b"$6\r\nfoobar\r\n";
         let mut result = String::new();
-        let pos = parse_bulk_string(input, &mut result).await;
+        let pos = parse_bulk_string(input, &mut result).await.unwrap();
         assert_eq!(pos, 12);
         assert_eq!(result, "foobar");
     }
