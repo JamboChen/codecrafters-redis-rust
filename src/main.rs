@@ -3,6 +3,7 @@ use std::io::Error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
+    spawn,
 };
 
 async fn execute_command(stream: TcpStream) -> Result<(), Error> {
@@ -29,9 +30,11 @@ async fn main() {
         match stream {
             Ok((_stream, _)) => {
                 println!("accepted new connection");
-                if let Err(e) = execute_command(_stream).await {
-                    println!("error: {}", e);
-                }
+                spawn(async move {
+                    if let Err(e) = execute_command(_stream).await {
+                        println!("error: {}", e);
+                    }
+                });
             }
             Err(e) => {
                 println!("error: {}", e);
