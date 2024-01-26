@@ -54,7 +54,7 @@ pub async fn parse_command(input: &[u8]) -> Result<Command, Error> {
 
     let command = match tokens[0].to_lowercase().as_str() {
         "ping" => Command::Ping,
-        "echo" => Command::Echo(tokens[1].clone()),
+        "echo" if tokens.len() == 2 => Command::Echo(tokens[1].clone()),
         "set" => match tokens.len() {
             3 => Command::Set(tokens[1].clone(), tokens[2].clone(), None),
             5 if tokens[3].to_lowercase() == "px" => {
@@ -63,7 +63,8 @@ pub async fn parse_command(input: &[u8]) -> Result<Command, Error> {
             }
             _ => Command::Unknown,
         },
-        "get" => Command::Get(tokens[1].clone()),
+        "get" if tokens.len() == 2 => Command::Get(tokens[1].clone()),
+        "keys" if tokens.len() == 2 => Command::Keys(tokens[1].clone()),
         "config" => {
             if tokens.len() < 3 {
                 return Ok(Command::Unknown);
