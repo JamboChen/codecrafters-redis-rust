@@ -1,47 +1,52 @@
-use std::collections::HashMap;
 use std::env::args;
 
-#[derive(Debug)]
+
+#[derive(Clone)]
 pub struct Args {
-    args: HashMap<String, String>,
-    flags: Vec<String>,
+    pub port: u16,
+    pub dir: Option<String>,
+    pub dbfilename: Option<String>,
+    pub replicaof: Option<(String, u16)>,
 }
 
 impl Args {
     pub fn new() -> Self {
         Args {
-            args: HashMap::new(),
-            flags: Vec::new(),
+            port: 6379,
+            dir: None,
+            dbfilename: None,
+            replicaof: None,
         }
     }
 
-    pub fn load(&mut self) {
+    pub fn load() -> Self {
+        let mut args_self = Args::new();
         let args: Vec<String> = args().collect();
-        let mut iter = args.iter().peekable();
-        while let Some(arg) = iter.next() {
-            if !arg.starts_with("--") {
-                continue;
-            }
-            let key = arg[2..].to_string();
-            let value = if iter.peek().map(|s| s.starts_with("--")).unwrap_or(false) {
-                None
-            } else {
-                iter.next().map(|s| s.to_owned())
-            };
+        let mut iter = args.iter();
 
-            if let Some(value) = value {
-                self.args.insert(key, value);
-            } else {
-                self.flags.push(key);
+        while let Some(arg) = iter.next() {
+            match arg.to_lowercase().as_str() {
+                "--port" => {
+                    args_self.port = iter.next().map(|s| s.parse().unwrap()).unwrap_or(6379);
+                }
+                "--dir" => {
+                    args_self.dir = iter.next().map(|s| s.to_owned());
+                }
+                "--dbfilename" => {
+                    args_self.dbfilename = iter.next().map(|s| s.to_owned());
+                }
+                "--replicaof" => {
+                    args_self.replicaof = iter.next().map(|s| {
+                        (
+                            s.to_owned(),
+                            iter.next().map(|s| s.parse().unwrap()).unwrap_or(6379),
+                        )
+                    });
+                }
+                _ => {}
             }
         }
-    }
 
-    pub fn get(&self, key: &str) -> Option<String> {
-        self.args.get(key).map(|s| s.to_owned())
-    }
-
-    pub fn has_flag(&self, flag: &str) -> bool {
-        self.flags.contains(&flag.to_string())
+        args_self
     }
 }
