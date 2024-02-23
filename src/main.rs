@@ -124,12 +124,26 @@ async fn handle_stream(stream: TcpStream, db: &Database) -> Result<(), Error> {
     Ok(())
 }
 
+async fn connect_to_master(address: &str) -> Result<(), Error> {
+    let mut stream = TcpStream::connect(address).await?;
+    stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes()).await?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     let db = Database::new();
     let address = format!("127.0.0.1:{}", &db.config().get("port").unwrap());
+    let listener = TcpListener::bind(&address).await.expect("failed to bind");
     println!("Listening on {}", address);
-    let listener = TcpListener::bind(address).await.expect("failed to bind");
+
+    if let Some(address) = db.config().get("replicaof") {
+        println!("Connecting to master at {}", address);
+        if let Err(e) = connect_to_master(&address).await {
+            println!("error: {}", e);
+        }
+    }
 
     let db = Arc::new(db);
 
