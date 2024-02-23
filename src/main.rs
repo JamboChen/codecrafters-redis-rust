@@ -19,6 +19,7 @@ pub enum Command {
     Get(String),
     Keys(String),
     ConfigGet(String),
+    Info(Option<String>),
     Unknown,
 }
 
@@ -70,11 +71,22 @@ async fn execute_command(
             }
             None => "$-1\r\n".to_string(),
         },
+        Command::Info(parm) => match parm {
+            Some(parm) => execute_info_command(parm),
+            None => "-Failed to fetch\r\n".to_string(),
+        },
         Command::Unknown => "-ERR unknown command\r\n".to_string(),
     };
 
     stream.write_all(resp.as_bytes()).await?;
     Ok(())
+}
+
+fn execute_info_command(parm: String) -> String {
+    match parm.as_str() {
+        "replication" => "$11\r\nrole:master\r\n".to_string(),
+        _ => "-Failed to fetch\r\n".to_string(),
+    }
 }
 
 async fn handle_stream(stream: TcpStream, db: &Database) -> Result<(), Error> {
