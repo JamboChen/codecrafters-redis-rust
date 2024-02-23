@@ -119,6 +119,7 @@ async fn main() {
     let args = args::Args::load();
 
     let address = format!("127.0.0.1:{}", &args.port);
+    println!("Listening on {}", address);
     let listener = TcpListener::bind(address).await.expect("failed to bind");
 
     let db = Database::new(args.dir.clone(), args.dbfilename.clone());
