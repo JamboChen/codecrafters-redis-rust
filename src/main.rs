@@ -91,9 +91,9 @@ fn execute_info_command(parm: String, config: &Config) -> String {
             let master_repl_offset = 0;
             let mut info = String::new();
             if let Some(_) = &config.replicaof {
-                info.push_str(&format!("role: slave\r\n"));
+                info.push_str(&format!("role:slave\r\n"));
             } else {
-                info.push_str(&format!("role: master\r\n"));
+                info.push_str(&format!("role:master\r\n"));
             }
             info.push_str(&format!("master_replid: {}\r\n", master_replid));
             info.push_str(&format!("master_repl_offset: {}\r\n", master_repl_offset));
