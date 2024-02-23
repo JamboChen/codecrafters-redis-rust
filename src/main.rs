@@ -87,7 +87,7 @@ async fn execute_command(
 fn execute_info_command(parm: String, args: &Args) -> String {
     match parm.as_str() {
         "replication" => match &args.replicaof {
-            Some(_) => "$11\r\nrole:slave\r\n".to_string(),
+            Some(_) => "$10\r\nrole:slave\r\n".to_string(),
             None => "$11\r\nrole:master\r\n".to_string(),
         },
         _ => "-Failed to fetch\r\n".to_string(),
