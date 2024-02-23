@@ -1,16 +1,10 @@
 use std::collections::HashMap;
-use std::env::args;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 
+use crate::config::Config;
 use std::fs::File;
 use std::io::{BufReader, Read};
-
-#[derive(Debug)]
-pub struct Config {
-    dir: Option<String>,
-    dbfilename: Option<String>,
-}
 
 #[derive(Clone)]
 struct ExpiringValue {
@@ -23,48 +17,9 @@ pub struct Database {
     db: RwLock<HashMap<String, ExpiringValue>>,
 }
 
-impl Config {
-    pub fn new() -> Self {
-        Config {
-            dir: None,
-            dbfilename: None,
-        }
-    }
-
-    pub fn from_args(&mut self) {
-        let args: Vec<String> = args().collect();
-        let mut iter = args.iter();
-        while let Some(arg) = iter.next() {
-            match arg.to_lowercase().as_str() {
-                "--dir" => {
-                    self.dir = iter.next().map(|s| s.to_owned());
-                }
-                "--dbfilename" => {
-                    self.dbfilename = iter.next().map(|s| s.to_owned());
-                }
-                _ => {}
-            }
-        }
-    }
-
-    pub fn get(&self, key: &str) -> Option<String> {
-        match key.to_lowercase().as_str() {
-            "dir" => self.dir.clone(),
-            "dbfilename" => self.dbfilename.clone(),
-            _ => None,
-        }
-    }
-
-    pub fn get_file_path(&self) -> Option<String> {
-        match (&self.dir, &self.dbfilename) {
-            (Some(dir), Some(dbfilename)) => Some(format!("{}/{}", dir, dbfilename)),
-            _ => None,
-        }
-    }
-}
 impl Database {
-    pub fn new(dir: Option<String>, dbfilename: Option<String>) -> Self {
-        let config = Config { dir, dbfilename };
+    pub fn new() -> Self {
+        let config = Config::from_args();
 
         let db = match config.get_file_path() {
             Some(file_path) => {
@@ -82,6 +37,10 @@ impl Database {
             config,
             db: RwLock::new(db),
         }
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 
     pub async fn set(&self, key: &str, value: &str) {
@@ -154,8 +113,8 @@ impl Database {
         valid_keys
     }
 
-    pub async fn config_get(&self, key: &str) -> Option<String> {
-        self.config.get(key)
+    pub fn config_get(&self, key: &str) -> Option<String> {
+        self.config.get_info(key)
     }
 }
 
