@@ -95,8 +95,8 @@ fn execute_info_command(parm: String, config: &Config) -> String {
             } else {
                 info.push_str(&format!("role:master\r\n"));
             }
-            info.push_str(&format!("master_replid: {}\r\n", master_replid));
-            info.push_str(&format!("master_repl_offset: {}\r\n", master_repl_offset));
+            info.push_str(&format!("master_replid:{}\r\n", master_replid));
+            info.push_str(&format!("master_repl_offset:{}\r\n", master_repl_offset));
 
             resp::bulk_string(&info)
         }
