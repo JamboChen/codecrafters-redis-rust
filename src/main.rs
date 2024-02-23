@@ -124,10 +124,35 @@ async fn handle_stream(stream: TcpStream, db: &Database) -> Result<(), Error> {
     Ok(())
 }
 
-async fn connect_to_master(address: &str) -> Result<(), Error> {
+async fn connect_to_master(address: &str, config: &Config) -> Result<(), Error> {
     let mut stream = TcpStream::connect(address).await?;
     stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes()).await?;
 
+    let mut buf = [0; 8];
+    stream.read(&mut buf).await?;
+    assert_eq!(b"+PONG\r\n", &buf[..6]);
+
+    // REPLCONF listening-port <PORT>
+    stream
+        .write_all(
+            format!(
+                "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n{}\r\n",
+                config.port
+            )
+            .as_bytes(),
+        )
+        .await?;
+
+    stream.read(&mut buf).await?;
+    assert_eq!(b"+PONG\r\n", &buf[..6]);
+
+    // REPLCONF capa psync2
+    stream
+        .write_all("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".as_bytes())
+        .await?;
+
+    stream.read(&mut buf).await?;
+    assert_eq!(b"+PONG\r\n", &buf[..6]);
     Ok(())
 }
 
@@ -140,7 +165,7 @@ async fn main() {
 
     if let Some(address) = db.config().get("replicaof") {
         println!("Connecting to master at {}", address);
-        if let Err(e) = connect_to_master(&address).await {
+        if let Err(e) = connect_to_master(&address, db.config()).await {
             println!("error: {}", e);
         }
     }
