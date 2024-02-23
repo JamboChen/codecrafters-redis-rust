@@ -73,6 +73,13 @@ pub async fn parse_command(input: &[u8]) -> Result<Command, Error> {
                 "get" => Command::ConfigGet(tokens[2].clone()),
                 _ => Command::Unknown,
             }
+        },
+        "info" =>{
+            if tokens.len() < 2 {
+                Command::Info(None)
+            } else {
+                Command::Info(Some(tokens[1].clone()))
+            }
         }
         _ => Command::Unknown,
     };
