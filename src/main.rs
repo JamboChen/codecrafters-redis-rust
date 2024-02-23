@@ -144,7 +144,7 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<(), Error> 
         .await?;
 
     stream.read(&mut buf).await?;
-    assert_eq!(b"+PONG\r\n", &buf[..7]);
+    assert_eq!(b"+OK\r\n", &buf[..5]);
 
     // REPLCONF capa psync2
     stream
@@ -152,7 +152,7 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<(), Error> 
         .await?;
 
     stream.read(&mut buf).await?;
-    assert_eq!(b"+PONG\r\n", &buf[..7]);
+    assert_eq!(b"+OK\r\n", &buf[..5]);
     Ok(())
 }
 
