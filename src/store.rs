@@ -63,9 +63,9 @@ impl Config {
     }
 }
 impl Database {
-    pub fn new() -> Self {
-        let mut config = Config::new();
-        config.from_args();
+    pub fn new(dir: Option<String>, dbfilename: Option<String>) -> Self {
+        let config = Config { dir, dbfilename };
+
         let db = match config.get_file_path() {
             Some(file_path) => {
                 if let Some(file) = File::open(file_path).ok() {

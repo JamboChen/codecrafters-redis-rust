@@ -1,10 +1,11 @@
+mod args;
 mod parse;
 mod store;
-use std::io::Error;
-use store::Database;
 
 use parse::parse_command;
+use std::io::Error;
 use std::sync::Arc;
+use store::Database;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -96,15 +97,22 @@ async fn handle_stream(stream: TcpStream, db: &Database) -> Result<(), Error> {
     Ok(())
 }
 
+const DEFAULT_PORT: &str = "6379";
+
 #[tokio::main]
 async fn main() {
-    let db = Database::new();
+    let mut args = args::Args::new();
+    args.load();
 
+    let db_dir = args.get("dir");
+    let db_name = args.get("dbfilename");
+    let port = args.get("port").unwrap_or(DEFAULT_PORT.to_string());
+
+    let db = Database::new(db_dir, db_name);
     let db = Arc::new(db);
 
-    let listener = TcpListener::bind("127.0.0.1:6379")
-        .await
-        .expect("failed to bind");
+    let address = format!("127.0.0.1:{}", port);
+    let listener = TcpListener::bind(address).await.expect("failed to bind");
 
     loop {
         let stream = listener.accept().await;
@@ -121,6 +129,6 @@ async fn main() {
             Err(e) => {
                 println!("error: {}", e);
             }
-        } 
+        }
     }
 }
