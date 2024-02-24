@@ -1,5 +1,6 @@
 mod config;
 mod parse;
+mod rdb;
 mod resp;
 mod store;
 
@@ -83,8 +84,12 @@ async fn execute_command(
         Command::Psync(_, _) => {
             let id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
             let offset = 0;
-            format!("+FULLRESYNC {} {}\r\n", id, offset)
-        },
+            stream
+                .write_all(format!("+FULLRESYNC {} {}\r\n", id, offset).as_bytes())
+                .await?;
+
+            resp::send_file(rdb::EMPTY)
+        }
         Command::Unknown => "-ERR unknown command\r\n".to_string(),
     };
 

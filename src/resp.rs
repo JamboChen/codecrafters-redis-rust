@@ -48,3 +48,13 @@ pub fn parse_array(input: &[u8]) -> Result<Vec<String>, Error> {
 pub fn bulk_string(s: &str) -> String {
     format!("${}\r\n{}\r\n", s.len(), s)
 }
+
+pub fn send_file(data: &[u8]) -> String {
+    let binary_strings = data
+        .iter()
+        .map(|b| format!("{:08b}", b))
+        .collect::<Vec<String>>()
+        .join("");
+
+    format!("${}\r\n{}", data.len(), binary_strings)
+}
