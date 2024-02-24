@@ -23,6 +23,7 @@ pub enum Command {
     ConfigGet(String),
     Info(Option<String>),
     Replconf,
+    Psync(String, usize),
     Unknown,
 }
 
@@ -79,6 +80,11 @@ async fn execute_command(
             None => "-Failed to fetch\r\n".to_string(),
         },
         Command::Replconf => "+OK\r\n".to_string(),
+        Command::Psync(_, _) => {
+            let id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
+            let offset = 0;
+            format!("+FULLRESYNC {} {}\r\n", id, offset)
+        },
         Command::Unknown => "-ERR unknown command\r\n".to_string(),
     };
 

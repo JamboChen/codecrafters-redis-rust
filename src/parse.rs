@@ -35,6 +35,10 @@ pub fn parse_command(input: &[u8]) -> Result<Command, Error> {
             }
         }
         "replconf" => Command::Replconf,
+        "psync" if tokens.len() == 3 => {
+            let offset = tokens[2].parse::<usize>().unwrap();
+            Command::Psync(tokens[1].clone(), offset)
+        }
         _ => Command::Unknown,
     };
 
