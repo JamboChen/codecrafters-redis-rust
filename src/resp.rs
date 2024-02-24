@@ -46,8 +46,15 @@ pub fn parse_array(input: &[u8]) -> Result<Vec<String>, Error> {
     Ok(array)
 }
 
-pub fn bulk_string(s: &str) -> String {
-    format!("${}\r\n{}\r\n", s.len(), s)
+pub fn bulk_string(s: &str) -> Bytes {
+    let mut bytes = BytesMut::new();
+    bytes.put_u8(b'$');
+    bytes.extend_from_slice(s.len().to_string().as_bytes());
+    bytes.extend_from_slice(b"\r\n");
+    bytes.extend_from_slice(s.as_bytes());
+    bytes.extend_from_slice(b"\r\n");
+
+    bytes.freeze()
 }
 
 pub fn rdb_file(data: &[u8]) -> Bytes {

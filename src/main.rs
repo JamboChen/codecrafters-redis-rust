@@ -15,6 +15,8 @@ use tokio::{
     spawn,
 };
 
+use bytes::{Bytes, BytesMut};
+
 pub enum Command {
     Ping,
     Echo(String),
@@ -33,26 +35,22 @@ async fn execute_command(
     command: Command,
     db: &Database,
 ) -> Result<(), Error> {
-    let resp: String = match command {
-        Command::Ping => "+PONG\r\n".to_string(),
-        Command::Echo(echo_arg) => {
-            format!("+{}\r\n", echo_arg)
-        }
+    let resp: Bytes = match command {
+        Command::Ping => Bytes::from_static(b"+PONG\r\n"),
+        Command::Echo(echo_arg) => Bytes::from(format!("+{}\r\n", echo_arg)),
         Command::Set(key, value, expiry_in_ms) => match expiry_in_ms {
             Some(expiry_in_ms) => {
                 db.set_with_expire(&key, &value, expiry_in_ms).await;
-                "+OK\r\n".to_string()
+                Bytes::from_static(b"+OK\r\n")
             }
             None => {
                 db.set(&key, &value).await;
-                "+OK\r\n".to_string()
+                Bytes::from_static(b"+OK\r\n")
             }
         },
         Command::Get(key) => match db.get(&key).await {
-            Some(value) => {
-                format!("+{}\r\n", value)
-            }
-            None => "$-1\r\n".to_string(),
+            Some(value) => Bytes::from(format!("+{}\r\n", value)),
+            None => Bytes::from_static(b"$-1\r\n"),
         },
         Command::Keys(pattern) => {
             let mut keys = db.keys(&pattern).await;
@@ -62,46 +60,47 @@ async fn execute_command(
             for key in keys {
                 resp.push_str(&format!("${}\r\n{}\r\n", key.len(), key));
             }
-            resp
+            Bytes::from(resp)
         }
         Command::ConfigGet(key) => match db.config_get(key.as_str()) {
-            Some(value) => {
-                format!(
-                    "*2\r\n${}\r\n{}\r\n${}\r\n{}\r\n",
-                    key.len(),
-                    key,
-                    value.len(),
-                    value
-                )
-            }
-            None => "$-1\r\n".to_string(),
+            Some(value) => Bytes::from(format!(
+                "*2\r\n${}\r\n{}\r\n${}\r\n{}\r\n",
+                key.len(),
+                key,
+                value.len(),
+                value
+            )),
+            None => Bytes::from_static(b"$-1\r\n"),
         },
         Command::Info(parm) => match parm {
             Some(parm) => execute_info_command(parm, db.config()),
-            None => "-Failed to fetch\r\n".to_string(),
+            None => Bytes::from_static(b"-Failed to fetch\r\n"),
         },
-        Command::Replconf => "+OK\r\n".to_string(),
+        Command::Replconf => Bytes::from_static(b"+OK\r\n"),
         Command::Psync(_, _) => {
             let id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
             let offset = 0;
-            stream
-                .write_all(format!("+FULLRESYNC {} {}\r\n", id, offset).as_bytes())
-                .await?;
+            let mut bytes = BytesMut::new();
+            //format!("+FULLRESYNC {} {}\r\n", id, offset)
+            bytes.extend_from_slice(b"+FULLRESYNC ");
+            bytes.extend_from_slice(id.as_bytes());
+            bytes.extend_from_slice(b" ");
+            bytes.extend_from_slice(offset.to_string().as_bytes());
+            bytes.extend_from_slice(b"\r\n");
 
-            stream
-                .write_all(resp::rdb_file(&rdb::empty_rdb()).as_ref())
-                .await?; // send RDB file
-            return Ok(());
+            bytes.extend(resp::rdb_file(&rdb::empty_rdb()));
+
+            bytes.freeze()
         }
 
-        Command::Unknown => "-ERR unknown command\r\n".to_string(),
+        Command::Unknown => Bytes::from_static(b"-ERR unknown command\r\n"),
     };
 
-    stream.write_all(resp.as_bytes()).await?;
+    stream.write_all(&resp).await?;
     Ok(())
 }
 
-fn execute_info_command(parm: String, config: &Config) -> String {
+fn execute_info_command(parm: String, config: &Config) -> Bytes {
     match parm.as_str() {
         "replication" => {
             let master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
@@ -117,7 +116,7 @@ fn execute_info_command(parm: String, config: &Config) -> String {
 
             resp::bulk_string(&info)
         }
-        _ => "-Failed to fetch\r\n".to_string(),
+        _ => Bytes::from_static(b"-Failed to fetch\r\n"),
     }
 }
 

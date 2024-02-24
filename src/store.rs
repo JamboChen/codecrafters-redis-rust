@@ -84,7 +84,7 @@ impl Database {
         }
     }
 
-    pub async fn keys(&self, pattern: &str) -> Vec<String> {
+    pub async fn keys(&self, _pattern: &str) -> Vec<String> {
         let now = SystemTime::now();
         let mut expired_keys = Vec::new();
         let mut valid_keys = Vec::new();
@@ -162,13 +162,13 @@ fn serialize(file: File) -> HashMap<String, ExpiringValue> {
     println!("now: {:?}", now);
     let mut reader = BufReader::new(file);
     let mut buf = [0u8; 1024];
-    let bytes_read = reader.read(&mut buf).unwrap();
+    let _bytes_read = reader.read(&mut buf).unwrap();
 
     let fb_pos = buf.iter().position(|&b| b == 0xfb).unwrap();
     let mut pos = fb_pos + 1;
     let (hashtable_size, offset) = length_encode(&buf[pos..]).unwrap();
     pos += offset;
-    let (exprie_hashtable_size, offset) = length_encode(&buf[pos..]).unwrap();
+    let (_exprie_hashtable_size, offset) = length_encode(&buf[pos..]).unwrap();
     pos += offset;
 
     let mut db = HashMap::new();

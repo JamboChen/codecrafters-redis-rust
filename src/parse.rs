@@ -1,4 +1,4 @@
-use crate::resp::{parse_array, parse_bulk_string, parse_lenght};
+use crate::resp::parse_array;
 use crate::Command;
 use std::io::Error;
 
