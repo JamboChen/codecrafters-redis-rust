@@ -153,6 +153,9 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<(), Error> 
 
     stream.read(&mut buf).await?;
     assert_eq!(b"+OK\r\n", &buf[..5]);
+
+    // PSYNC ? -1
+    stream.write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes()).await?;
     Ok(())
 }
 
