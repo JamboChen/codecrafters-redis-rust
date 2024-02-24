@@ -34,6 +34,7 @@ pub fn parse_command(input: &[u8]) -> Result<Command, Error> {
                 Command::Info(Some(tokens[1].clone()))
             }
         }
+        "replconf" => Command::Replconf,
         _ => Command::Unknown,
     };
 

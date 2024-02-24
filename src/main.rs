@@ -22,6 +22,7 @@ pub enum Command {
     Keys(String),
     ConfigGet(String),
     Info(Option<String>),
+    Replconf,
     Unknown,
 }
 
@@ -77,6 +78,7 @@ async fn execute_command(
             Some(parm) => execute_info_command(parm, db.config()),
             None => "-Failed to fetch\r\n".to_string(),
         },
+        Command::Replconf => "+OK\r\n".to_string(),
         Command::Unknown => "-ERR unknown command\r\n".to_string(),
     };
 
@@ -155,7 +157,9 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<(), Error> 
     assert_eq!(b"+OK\r\n", &buf[..5]);
 
     // PSYNC ? -1
-    stream.write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes()).await?;
+    stream
+        .write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes())
+        .await?;
     Ok(())
 }
 
