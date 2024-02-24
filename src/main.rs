@@ -23,7 +23,7 @@ pub enum Command {
     ConfigGet(String),
     Info(Option<String>),
     Replconf,
-    Psync(String, usize),
+    Psync(String, Option<usize>),
     Unknown,
 }
 
