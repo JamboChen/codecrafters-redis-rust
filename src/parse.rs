@@ -36,7 +36,7 @@ pub fn parse_command(input: &[u8]) -> Result<Command, Error> {
         }
         "replconf" => Command::Replconf,
         "psync" if tokens.len() == 3 => {
-            let offset = if tokens[2] == "-" {
+            let offset = if tokens[2] == "-1" {
                 None
             } else {
                 Some(tokens[2].parse().unwrap())
