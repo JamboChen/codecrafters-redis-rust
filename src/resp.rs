@@ -49,11 +49,7 @@ pub fn bulk_string(s: &str) -> String {
     format!("${}\r\n{}\r\n", s.len(), s)
 }
 
-pub fn send_file(data: &[u8]) -> String {
-    let binary_strings = data
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<Vec<String>>()
-        .join("");
+pub fn rdb_file(data: &[u8]) -> String {
+    let binary_strings: String = data.iter().map(|b| format!("{:02x}", b)).collect(); 
     format!("${}\r\n{}", data.len(), binary_strings)
 }
