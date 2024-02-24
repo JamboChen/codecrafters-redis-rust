@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 
 use crate::config::Config;
@@ -13,8 +14,9 @@ struct ExpiringValue {
 }
 
 pub struct Database {
-    config: Config,
     db: RwLock<HashMap<String, ExpiringValue>>,
+    config: Config,
+    replications: RwLock<Vec<String>>,
 }
 
 impl Database {
@@ -34,8 +36,9 @@ impl Database {
         };
 
         Database {
-            config,
             db: RwLock::new(db),
+            config,
+            replications: RwLock::new(Vec::new()),
         }
     }
 
@@ -115,6 +118,23 @@ impl Database {
 
     pub fn config_get(&self, key: &str) -> Option<String> {
         self.config.get_info(key)
+    }
+
+    pub async fn add_replication(&self, ip: String, port: u16) {
+        let mut replications = self.replications.write().await;
+        replications.push(format!("{}:{}", ip, port));
+    }
+
+    pub async fn spread(&self, cmd: &[u8]) {
+        let replications = self.replications.read().await;
+        for replication in replications.iter() {
+            let mut stream = match tokio::net::TcpStream::connect(replication).await {
+                Ok(stream) => stream,
+                Err(_) => continue,
+            };
+            println!("spread to: {}", replication);
+            let _ = stream.write_all(cmd).await;
+        }
     }
 }
 

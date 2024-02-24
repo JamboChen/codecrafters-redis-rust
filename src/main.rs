@@ -25,7 +25,7 @@ pub enum Command {
     Keys(String),
     ConfigGet(String),
     Info(Option<String>),
-    Replconf,
+    Replconf(Vec<String>),
     Psync(String, Option<usize>),
     Unknown,
 }
@@ -76,7 +76,19 @@ async fn execute_command(
             Some(parm) => execute_info_command(parm, db.config()),
             None => Bytes::from_static(b"-Failed to fetch\r\n"),
         },
-        Command::Replconf => Bytes::from_static(b"+OK\r\n"),
+        Command::Replconf(args) => {
+            match args[0].as_str() {
+                "listening-port" => {
+                    let ip: String = stream.peer_addr().unwrap().ip().to_string();
+                    let port = args[1].parse::<u16>().unwrap();
+                    println!("replication added: {}:{}", &ip, port);
+                    db.add_replication(ip, port).await;
+                }
+                _ => {}
+            }
+
+            Bytes::from_static(b"+OK\r\n")
+        }
         Command::Psync(_, _) => {
             let id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
             let offset = 0;
@@ -127,8 +139,8 @@ async fn handle_stream(stream: TcpStream, db: &Database) -> Result<(), Error> {
         if n == 0 {
             break;
         }
-
-        match parse_command(&buf[..n]) {
+        println!("received: {}", String::from_utf8_lossy(&buf[..n]));
+        match parse_command(&buf[..n], db).await {
             Ok(cmd) => execute_command(&mut stream, cmd, db).await?,
 
             Err(e) => {
@@ -197,7 +209,6 @@ async fn main() {
         let stream = listener.accept().await;
         match stream {
             Ok((_stream, _)) => {
-                println!("accepted new connection");
                 let db = Arc::clone(&db);
                 spawn(async move {
                     if let Err(e) = handle_stream(_stream, &db).await {
