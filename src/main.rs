@@ -88,8 +88,12 @@ async fn execute_command(
                 .write_all(format!("+FULLRESYNC {} {}\r\n", id, offset).as_bytes())
                 .await?;
 
-            resp::rdb_file(&rdb::empty_rdb())
+            stream
+                .write_all(resp::rdb_file(&rdb::empty_rdb()).as_ref())
+                .await?; // send RDB file
+            return Ok(());
         }
+
         Command::Unknown => "-ERR unknown command\r\n".to_string(),
     };
 

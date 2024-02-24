@@ -1,3 +1,4 @@
+use bytes::{BufMut, Bytes, BytesMut};
 use std::io::Error;
 
 const BULK_STRING: u8 = b'$'; // 0x24
@@ -49,7 +50,12 @@ pub fn bulk_string(s: &str) -> String {
     format!("${}\r\n{}\r\n", s.len(), s)
 }
 
-pub fn rdb_file(data: &[u8]) -> String {
-    let binary_strings: String = data.iter().map(|b| format!("{:02x}", b)).collect(); 
-    format!("${}\r\n{}", data.len(), binary_strings)
+pub fn rdb_file(data: &[u8]) -> Bytes {
+    let mut bytes = BytesMut::new();
+    bytes.put_u8(b'$');
+    bytes.extend_from_slice(data.len().to_string().as_bytes());
+    bytes.extend_from_slice(b"\r\n");
+    bytes.extend_from_slice(data);
+
+    bytes.freeze()
 }
