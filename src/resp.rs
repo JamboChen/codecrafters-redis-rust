@@ -52,9 +52,8 @@ pub fn bulk_string(s: &str) -> String {
 pub fn send_file(data: &[u8]) -> String {
     let binary_strings = data
         .iter()
-        .map(|b| format!("{:08b}", b))
+        .map(|b| format!("{:02x}", b))
         .collect::<Vec<String>>()
         .join("");
-
     format!("${}\r\n{}", data.len(), binary_strings)
 }
