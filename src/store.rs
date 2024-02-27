@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tokio::io::AsyncWriteExt;
-use tokio::sync::RwLock;
+use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::config::Config;
 use std::fs::File;
@@ -16,7 +16,7 @@ struct ExpiringValue {
 pub struct Database {
     db: RwLock<HashMap<String, ExpiringValue>>,
     config: Config,
-    replications: RwLock<Vec<String>>,
+    replications: Mutex<Vec<UnboundedSender<String>>>,
 }
 
 impl Database {
@@ -38,7 +38,7 @@ impl Database {
         Database {
             db: RwLock::new(db),
             config,
-            replications: RwLock::new(Vec::new()),
+            replications: Mutex::new(Vec::new()),
         }
     }
 
@@ -120,20 +120,15 @@ impl Database {
         self.config.get_info(key)
     }
 
-    pub async fn add_replication(&self, ip: String, port: u16) {
-        let mut replications = self.replications.write().await;
-        replications.push(format!("{}:{}", ip, port));
+    pub async fn add_replication(&self, tx: UnboundedSender<String>) {
+        let mut replications = self.replications.lock().await;
+        replications.push(tx);
     }
 
     pub async fn spread(&self, cmd: &[u8]) {
-        let replications = self.replications.read().await;
-        for replication in replications.iter() {
-            let mut stream = match tokio::net::TcpStream::connect(replication).await {
-                Ok(stream) => stream,
-                Err(_) => continue,
-            };
-            println!("spread to: {}", replication);
-            let _ = stream.write_all(cmd).await;
+        let replications = self.replications.lock().await;
+        for tx in replications.iter() {
+            let _ = tx.send(String::from_utf8_lossy(cmd).to_string());
         }
     }
 }

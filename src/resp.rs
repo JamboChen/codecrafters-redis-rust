@@ -46,6 +46,38 @@ pub fn parse_array(input: &[u8]) -> Result<Vec<String>, Error> {
     Ok(array)
 }
 
+pub fn encoding_simple_string(s: &str) -> Bytes {
+    let mut bytes = BytesMut::new();
+    bytes.put_u8(b'+');
+    bytes.extend_from_slice(s.as_bytes());
+    bytes.extend_from_slice(b"\r\n");
+
+    bytes.freeze()
+}
+
+pub fn encoding_bulk_string(s: &str) -> Bytes {
+    let mut bytes = BytesMut::new();
+    bytes.put_u8(b'$');
+    bytes.extend_from_slice(s.len().to_string().as_bytes());
+    bytes.extend_from_slice(b"\r\n");
+    bytes.extend_from_slice(s.as_bytes());
+    bytes.extend_from_slice(b"\r\n");
+
+    bytes.freeze()
+}
+
+pub fn encoding_array(array: &[&str]) -> Bytes {
+    let mut bytes = BytesMut::new();
+    bytes.put_u8(b'*');
+    bytes.extend_from_slice(array.len().to_string().as_bytes());
+    bytes.extend_from_slice(b"\r\n");
+    for s in array {
+        bytes.extend_from_slice(encoding_bulk_string(s).as_ref());
+    }
+
+    bytes.freeze()
+}
+
 pub fn bulk_string(s: &str) -> Bytes {
     let mut bytes = BytesMut::new();
     bytes.put_u8(b'$');

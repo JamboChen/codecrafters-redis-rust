@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod config;
 mod parse;
 mod rdb;
@@ -9,6 +11,7 @@ use parse::parse_command;
 use std::io::Error;
 use std::sync::Arc;
 use store::Database;
+use tokio::sync::mpsc;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -34,20 +37,26 @@ async fn execute_command(
     stream: &mut TcpStream,
     command: Command,
     db: &Database,
+    tx: mpsc::UnboundedSender<String>,
 ) -> Result<(), Error> {
     let resp: Bytes = match command {
         Command::Ping => Bytes::from_static(b"+PONG\r\n"),
         Command::Echo(echo_arg) => Bytes::from(format!("+{}\r\n", echo_arg)),
-        Command::Set(key, value, expiry_in_ms) => match expiry_in_ms {
-            Some(expiry_in_ms) => {
-                db.set_with_expire(&key, &value, expiry_in_ms).await;
-                Bytes::from_static(b"+OK\r\n")
+        Command::Set(key, value, expiry_in_ms) => {
+            let cmd_raw = resp::encoding_array(&["set", &key, &value]);
+            db.spread(&cmd_raw).await;
+
+            match expiry_in_ms {
+                Some(expiry_in_ms) => {
+                    db.set_with_expire(&key, &value, expiry_in_ms).await;
+                    Bytes::from_static(b"+OK\r\n")
+                }
+                None => {
+                    db.set(&key, &value).await;
+                    Bytes::from_static(b"+OK\r\n")
+                }
             }
-            None => {
-                db.set(&key, &value).await;
-                Bytes::from_static(b"+OK\r\n")
-            }
-        },
+        }
         Command::Get(key) => match db.get(&key).await {
             Some(value) => Bytes::from(format!("+{}\r\n", value)),
             None => Bytes::from_static(b"$-1\r\n"),
@@ -82,7 +91,7 @@ async fn execute_command(
                     let ip: String = stream.peer_addr().unwrap().ip().to_string();
                     let port = args[1].parse::<u16>().unwrap();
                     println!("replication added: {}:{}", &ip, port);
-                    db.add_replication(ip, port).await;
+                    db.add_replication(tx).await;
                 }
                 _ => {}
             }
@@ -132,20 +141,27 @@ fn execute_info_command(parm: String, config: &Config) -> Bytes {
     }
 }
 
-async fn handle_stream(stream: TcpStream, db: &Database) -> Result<(), Error> {
-    let mut stream = stream;
+async fn handle_stream(mut stream: TcpStream, db: &Database) -> Result<(), Error> {
+    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     let mut buf = [0; 1024];
-    while let Ok(n) = stream.read(&mut buf).await {
-        if n == 0 {
-            break;
-        }
-        println!("received: {}", String::from_utf8_lossy(&buf[..n]));
-        match parse_command(&buf[..n], db).await {
-            Ok(cmd) => execute_command(&mut stream, cmd, db).await?,
+    loop {
+        tokio::select! {
+            n = stream.read(&mut buf) => {
+                let n = n.unwrap_or(0);
+                if n == 0 {
+                    break;
+                }
+                let cmd = parse_command(&buf[..n], &db);
 
-            Err(e) => {
-                println!("error: {}", e);
-                break;
+                let tx = tx.clone();
+                if let Err(e) = execute_command(&mut stream, cmd, &db, tx).await {
+                    println!("error: {}", e);
+                }
+
+            }
+            Some(msg) = rx.recv() => {
+                println!("replicating: {}", msg);
+                stream.write_all(msg.as_bytes()).await?;
             }
         }
     }
