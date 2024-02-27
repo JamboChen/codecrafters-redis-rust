@@ -31,7 +31,7 @@ pub fn parse_array(input: &[u8]) -> Result<(Vec<String>, usize), Error> {
     if input[0] != ARRAY {
         return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
     }
-
+ 
     let mut pos: usize = 1;
     let mut array_len = 0;
     pos += parse_lenght(&input[pos..], &mut array_len);
