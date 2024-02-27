@@ -27,7 +27,7 @@ pub fn parse_bulk_string(input: &[u8], result: &mut String) -> Result<usize, Err
     Ok(pos + string_lemgth + 2)
 }
 
-pub fn parse_array(input: &[u8]) -> Result<Vec<String>, Error> {
+pub fn parse_array(input: &[u8]) -> Result<(Vec<String>, usize), Error> {
     if input[0] != ARRAY {
         return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
     }
@@ -43,7 +43,7 @@ pub fn parse_array(input: &[u8]) -> Result<Vec<String>, Error> {
         array.push(arg);
     }
 
-    Ok(array)
+    Ok((array, pos))
 }
 
 pub fn encoding_simple_string(s: &str) -> Bytes {

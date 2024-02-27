@@ -45,6 +45,7 @@ async fn execute_command(
         Command::Set(key, value, expiry_in_ms) => {
             let cmd_raw = resp::encoding_array(&["set", &key, &value]);
             db.spread(&cmd_raw).await;
+            println!("set: {} {}", key, value);
 
             match expiry_in_ms {
                 Some(expiry_in_ms) => {
@@ -151,16 +152,23 @@ async fn handle_stream(mut stream: TcpStream, db: &Database) -> Result<(), Error
                 if n == 0 {
                     break;
                 }
-                let cmd = parse_command(&buf[..n], &db);
+                let mut pos = 0;
+                while pos < n {
+                    let (cmd,pos_move) = parse_command(&buf[pos..n], &db);
+                    pos += pos_move;
 
-                let tx = tx.clone();
-                if let Err(e) = execute_command(&mut stream, cmd, &db, tx).await {
+
+                    let tx = tx.clone();
+                    if let Err(e) = execute_command(&mut stream, cmd, &db, tx).await {
                     println!("error: {}", e);
+
                 }
+            }
+
+
 
             }
             Some(msg) = rx.recv() => {
-                println!("replicating: {}", msg);
                 stream.write_all(msg.as_bytes()).await?;
             }
         }
