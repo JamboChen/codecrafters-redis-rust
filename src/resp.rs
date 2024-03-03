@@ -18,6 +18,22 @@ pub async fn parse_lenght(stream: &mut TcpStream) -> Result<usize> {
     Ok(size)
 }
 
+pub async fn parse_simple_string(stream: &mut TcpStream) -> Result<String> {
+    if stream.read_u8().await? != b'+' {
+        bail!("invalid data");
+    }
+
+    let mut buf = Vec::new();
+    let mut read_buf = stream.read_u8().await?;
+    while read_buf != b'\r' {
+        buf.push(read_buf);
+        read_buf = stream.read_u8().await?;
+    }
+    stream.read_u8().await?; // consume \n
+
+    Ok(String::from_utf8(buf)?)
+}
+
 pub async fn parse_bulk_string(stream: &mut TcpStream) -> Result<String> {
     if stream.read_u8().await? != BULK_STRING {
         bail!("invalid data");
@@ -97,4 +113,16 @@ pub fn rdb_file(data: &[u8]) -> Bytes {
     bytes.extend_from_slice(data);
 
     bytes.freeze()
+}
+
+pub async fn receive_rdb_file(stream: &mut TcpStream) -> Result<Bytes> {
+    if stream.read_u8().await? != BULK_STRING {
+        bail!("invalid data");
+    }
+    let size = parse_lenght(stream).await?;
+    println!("rdb file size: {}", size);
+    let mut buf = vec![0; size];
+    stream.read_exact(&mut buf).await?;
+
+    Ok(Bytes::from(buf))
 }

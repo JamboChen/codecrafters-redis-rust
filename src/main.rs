@@ -8,6 +8,7 @@ mod store;
 
 use config::Config;
 use parse::parse_command;
+use resp::{parse_simple_string, receive_rdb_file};
 use std::io::Error;
 use std::sync::Arc;
 use store::Database;
@@ -171,6 +172,8 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, 
     let mut stream = TcpStream::connect(address).await?;
     stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes()).await?;
 
+    println!("Send handshake 1");
+
     let mut buf = [0; 8];
     stream.read(&mut buf).await?;
     assert_eq!(b"+PONG\r\n", &buf[..7]);
@@ -201,6 +204,13 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, 
     stream
         .write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes())
         .await?;
+
+    println!("Send handshake 2");
+
+    let rec = parse_simple_string(&mut stream).await.unwrap();
+    println!("PSYNC: {}", rec);
+    let _ = receive_rdb_file(&mut stream).await.unwrap();
+    println!("RDB received");
     Ok(stream)
 }
 
@@ -208,7 +218,7 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, 
 async fn main() {
     let db = Database::new();
     let address = format!("127.0.0.1:{}", &db.config().get("port").unwrap());
-    let listener = TcpListener::bind(&address).await.expect("failed to bind");
+    let listener = TcpListener::bind(&address).await.expect(format!("Failed to bind to {}", address).as_str());
     println!("Listening on {}", address);
 
     let db = Arc::new(db);
