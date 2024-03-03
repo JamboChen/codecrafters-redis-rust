@@ -39,7 +39,7 @@ async fn execute_command(
     command: Command,
     db: &Database,
     tx: mpsc::UnboundedSender<String>,
-    reply: bool,
+    mut reply: bool,
 ) -> Result<(), Error> {
     let resp: Bytes = match command {
         Command::Ping => Bytes::from_static(b"+PONG\r\n"),
@@ -59,17 +59,17 @@ async fn execute_command(
                     Bytes::from_static(b"+OK\r\n")
                 }
             };
- 
- 
-            if !reply {
-                return Ok(()); // no need to send response
-            }
+
             resp
         }
-        Command::Get(key) => match db.get(&key).await {
-            Some(value) => Bytes::from(format!("+{}\r\n", value)),
-            None => Bytes::from_static(b"$-1\r\n"),
-        },
+        Command::Get(key) => {
+            println!("get: {}", key);
+            reply = true;
+            match db.get(&key).await {
+                Some(value) => Bytes::from(format!("+{}\r\n", value)),
+                None => Bytes::from_static(b"$-1\r\n"),
+            }
+        }
         Command::Keys(pattern) => {
             let mut keys = db.keys(&pattern).await;
             keys.sort();
@@ -126,6 +126,7 @@ async fn execute_command(
         Command::Unknown => Bytes::from_static(b"-ERR unknown command\r\n"),
     };
 
+    println!("Reply: {:?}", reply);
     if reply {
         stream.write_all(&resp).await?;
     }
