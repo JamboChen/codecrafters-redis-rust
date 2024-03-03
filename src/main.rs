@@ -38,6 +38,7 @@ async fn execute_command(
     command: Command,
     db: &Database,
     tx: mpsc::UnboundedSender<String>,
+    reply: bool,
 ) -> Result<(), Error> {
     let resp: Bytes = match command {
         Command::Ping => Bytes::from_static(b"+PONG\r\n"),
@@ -118,7 +119,9 @@ async fn execute_command(
         Command::Unknown => Bytes::from_static(b"-ERR unknown command\r\n"),
     };
 
-    stream.write_all(&resp).await?;
+    if reply {
+        stream.write_all(&resp).await?;
+    }
     Ok(())
 }
 
@@ -142,32 +145,20 @@ fn execute_info_command(parm: String, config: &Config) -> Bytes {
     }
 }
 
-async fn handle_stream(mut stream: TcpStream, db: &Database) -> Result<(), Error> {
+async fn handle_stream(mut stream: TcpStream, db: &Database, reply: bool) -> Result<(), Error> {
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-    let mut buf = [0; 1024];
+    let mut buf = [0; 1];
     loop {
         tokio::select! {
-            n = stream.read(&mut buf) => {
+            n = stream.peek(&mut buf) => {
                 let n = n.unwrap_or(0);
                 if n == 0 {
                     break;
                 }
-                let mut pos = 0;
-                while pos < n {
-                    let (cmd,pos_move) = parse_command(&buf[pos..n], &db);
-                    pos += pos_move;
-
-
-                    let tx = tx.clone();
-                    if let Err(e) = execute_command(&mut stream, cmd, &db, tx).await {
-                    println!("error: {}", e);
-
-                }
+                let command = parse_command(&mut stream).await;
+                let _ = execute_command(&mut stream, command, db, tx.clone(), reply).await;
             }
 
-
-
-            }
             Some(msg) = rx.recv() => {
                 stream.write_all(msg.as_bytes()).await?;
             }
@@ -176,7 +167,7 @@ async fn handle_stream(mut stream: TcpStream, db: &Database) -> Result<(), Error
     Ok(())
 }
 
-async fn connect_to_master(address: &str, config: &Config) -> Result<(), Error> {
+async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, Error> {
     let mut stream = TcpStream::connect(address).await?;
     stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes()).await?;
 
@@ -210,7 +201,7 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<(), Error> 
     stream
         .write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes())
         .await?;
-    Ok(())
+    Ok(stream)
 }
 
 #[tokio::main]
@@ -220,14 +211,24 @@ async fn main() {
     let listener = TcpListener::bind(&address).await.expect("failed to bind");
     println!("Listening on {}", address);
 
+    let db = Arc::new(db);
+
     if let Some(address) = db.config().get("replicaof") {
         println!("Connecting to master at {}", address);
-        if let Err(e) = connect_to_master(&address, db.config()).await {
-            println!("error: {}", e);
+        match connect_to_master(&address, db.config()).await {
+            Ok(stream) => {
+                let db = Arc::clone(&db);
+                spawn(async move {
+                    if let Err(e) = handle_stream(stream, &db, false).await {
+                        println!("error: {}", e);
+                    }
+                });
+            }
+            Err(e) => {
+                println!("Failed to connect to master: {}", e);
+            }
         }
     }
-
-    let db = Arc::new(db);
 
     loop {
         let stream = listener.accept().await;
@@ -235,7 +236,7 @@ async fn main() {
             Ok((_stream, _)) => {
                 let db = Arc::clone(&db);
                 spawn(async move {
-                    if let Err(e) = handle_stream(_stream, &db).await {
+                    if let Err(e) = handle_stream(_stream, &db, true).await {
                         println!("error: {}", e);
                     }
                 });

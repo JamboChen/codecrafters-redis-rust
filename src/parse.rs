@@ -1,9 +1,10 @@
+use tokio::net::TcpStream;
+
 use crate::resp::parse_array;
-use crate::store::Database;
 use crate::Command;
 
-pub fn parse_command(input: &[u8], _db: &Database) -> (Command, usize) {
-    let (tokens, pos) = parse_array(input).unwrap();
+pub async fn parse_command(stream: &mut TcpStream) -> Command {
+    let tokens = parse_array(stream).await.unwrap();
 
     let command = match tokens[0].to_lowercase().as_str() {
         "ping" => Command::Ping,
@@ -20,7 +21,7 @@ pub fn parse_command(input: &[u8], _db: &Database) -> (Command, usize) {
         "keys" if tokens.len() == 2 => Command::Keys(tokens[1].clone()),
         "config" => {
             if tokens.len() < 3 {
-                return (Command::Unknown, pos)
+                return Command::Unknown;
             }
             match tokens[1].to_lowercase().as_str() {
                 "get" => Command::ConfigGet(tokens[2].clone()),
@@ -46,5 +47,5 @@ pub fn parse_command(input: &[u8], _db: &Database) -> (Command, usize) {
         _ => Command::Unknown,
     };
 
-    (command, pos)
+    command
 }

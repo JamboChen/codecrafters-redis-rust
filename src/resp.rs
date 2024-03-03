@@ -1,49 +1,49 @@
+use anyhow::{bail, Result};
 use bytes::{BufMut, Bytes, BytesMut};
-use std::io::Error;
+use tokio::{io::AsyncReadExt, net::TcpStream};
 
 const BULK_STRING: u8 = b'$'; // 0x24
 const ARRAY: u8 = b'*'; // 0x2a
 
-pub fn parse_lenght(input: &[u8], len: &mut usize) -> usize {
-    let mut pos: usize = 0;
-    *len = 0;
-    while input[pos] != b'\r' {
-        *len = *len * 10 + (input[pos] - b'0') as usize;
-        pos += 1;
+pub async fn parse_lenght(stream: &mut TcpStream) -> Result<usize> {
+    let mut size = 0;
+
+    let mut buf = stream.read_u8().await?;
+    while buf != b'\r' {
+        size = size * 10 + (buf - b'0') as usize;
+        buf = stream.read_u8().await?;
     }
-    pos + 2
+    stream.read_u8().await?; // consume \n
+
+    Ok(size)
 }
 
-pub fn parse_bulk_string(input: &[u8], result: &mut String) -> Result<usize, Error> {
-    if input[0] != BULK_STRING {
-        return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
+pub async fn parse_bulk_string(stream: &mut TcpStream) -> Result<String> {
+    if stream.read_u8().await? != BULK_STRING {
+        bail!("invalid data");
     }
 
-    let mut pos: usize = 1;
-    let mut string_lemgth = 0;
-    pos += parse_lenght(&input[pos..], &mut string_lemgth);
+    let size = parse_lenght(stream).await?;
+    let mut buf = vec![0; size];
+    stream.read_exact(&mut buf).await?;
+    stream.read_u16().await?; // consume \r\n
 
-    *result = String::from_utf8_lossy(&input[pos..pos + string_lemgth]).to_string();
-    Ok(pos + string_lemgth + 2)
+    Ok(String::from_utf8(buf)?)
 }
 
-pub fn parse_array(input: &[u8]) -> Result<(Vec<String>, usize), Error> {
-    if input[0] != ARRAY {
-        return Err(Error::new(std::io::ErrorKind::InvalidData, "invalid data"));
-    }
- 
-    let mut pos: usize = 1;
-    let mut array_len = 0;
-    pos += parse_lenght(&input[pos..], &mut array_len);
-
-    let mut array: Vec<String> = Vec::with_capacity(array_len);
-    for _ in 0..array_len {
-        let mut arg = String::new();
-        pos += parse_bulk_string(&input[pos..], &mut arg)?;
-        array.push(arg);
+pub async fn parse_array(stream: &mut TcpStream) -> Result<Vec<String>> {
+    if stream.read_u8().await? != ARRAY {
+        bail!("invalid data");
     }
 
-    Ok((array, pos))
+    let size = parse_lenght(stream).await?;
+    let mut array = Vec::with_capacity(size);
+
+    for _ in 0..size {
+        array.push(parse_bulk_string(stream).await?);
+    }
+
+    Ok(array)
 }
 
 pub fn encoding_simple_string(s: &str) -> Bytes {
