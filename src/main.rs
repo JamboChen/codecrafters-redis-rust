@@ -253,6 +253,11 @@ async fn main() {
         let stream = listener.accept().await;
         match stream {
             Ok((_stream, _)) => {
+                println!(
+                    "New connection from {}:{}",
+                    _stream.peer_addr().unwrap().ip(),
+                    _stream.peer_addr().unwrap().port()
+                );
                 let db = Arc::clone(&db);
                 spawn(async move {
                     if let Err(e) = handle_stream(_stream, &db, true).await {
