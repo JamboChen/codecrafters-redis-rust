@@ -49,7 +49,7 @@ async fn execute_command(
             db.spread(&cmd_raw).await;
             println!("set: {} {}", key, value);
 
-            match expiry_in_ms {
+            let resp = match expiry_in_ms {
                 Some(expiry_in_ms) => {
                     db.set_with_expire(&key, &value, expiry_in_ms).await;
                     Bytes::from_static(b"+OK\r\n")
@@ -58,7 +58,12 @@ async fn execute_command(
                     db.set(&key, &value).await;
                     Bytes::from_static(b"+OK\r\n")
                 }
+            };
+
+            if !reply {
+                return Ok(()); // no need to send response
             }
+            resp
         }
         Command::Get(key) => match db.get(&key).await {
             Some(value) => Bytes::from(format!("+{}\r\n", value)),
@@ -218,7 +223,9 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, 
 async fn main() {
     let db = Database::new();
     let address = format!("127.0.0.1:{}", &db.config().get("port").unwrap());
-    let listener = TcpListener::bind(&address).await.expect(format!("Failed to bind to {}", address).as_str());
+    let listener = TcpListener::bind(&address)
+        .await
+        .expect(format!("Failed to bind to {}", address).as_str());
     println!("Listening on {}", address);
 
     let db = Arc::new(db);
