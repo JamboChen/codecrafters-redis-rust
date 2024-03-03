@@ -221,6 +221,7 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, 
     Ok(stream)
 }
 
+
 #[tokio::main]
 async fn main() {
     let db = Database::new();
