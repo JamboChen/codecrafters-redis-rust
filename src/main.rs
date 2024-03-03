@@ -249,7 +249,6 @@ async fn main() {
         }
     }
 
-    
     loop {
         let stream = listener.accept().await;
         match stream {
