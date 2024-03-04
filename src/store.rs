@@ -17,6 +17,7 @@ pub struct Database {
     db: Mutex<HashMap<String, ExpiringValue>>,
     config: Config,
     replications: Mutex<Vec<UnboundedSender<String>>>,
+    wait: Mutex<usize>,
 }
 
 impl Database {
@@ -39,6 +40,7 @@ impl Database {
             db: Mutex::new(db),
             config,
             replications: Mutex::new(Vec::new()),
+            wait: Mutex::new(0),
         }
     }
 
@@ -129,12 +131,28 @@ impl Database {
         let replications = self.replications.lock().await;
         for tx in replications.iter() {
             let _ = tx.send(String::from_utf8_lossy(cmd).to_string());
+            {
+                let mut wait = self.wait.lock().await;
+                *wait += 1;
+            }
         }
+        let mut wait = self.wait.lock().await;
+        *wait = 0;
     }
 
     pub async fn replication_count(&self) -> usize {
         let replications = self.replications.lock().await;
         replications.len()
+    }
+
+    pub async fn wait(&self, count: usize, timeout: u64) -> bool {
+        let mut wait = self.wait.lock().await;
+        if *wait >= count {
+            *wait = 0;
+            true
+        } else {
+            false
+        }
     }
 }
 
