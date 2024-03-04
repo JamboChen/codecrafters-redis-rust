@@ -41,6 +41,7 @@ async fn execute_command(
     db: &Database,
     tx: mpsc::UnboundedSender<String>,
     mut reply: bool,
+    offset: usize,
 ) -> Result<(), Error> {
     println!("Command: {:?}", command);
     let resp: Bytes = match command {
@@ -106,7 +107,7 @@ async fn execute_command(
             }
             "getack" if args[1] == "*" => {
                 reply = true;
-                encoding_array(&["REPLCONF", "ACK", "0"])
+                encoding_array(&["REPLCONF", "ACK", &offset.to_string()])
             }
             _ => Bytes::from_static(b"-ERR Unrecognized REPLCONF option\r\n"),
         },
@@ -159,6 +160,7 @@ fn execute_info_command(parm: String, config: &Config) -> Bytes {
 async fn handle_stream(mut stream: TcpStream, db: &Database, reply: bool) -> Result<(), Error> {
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     let mut buf = [0; 1];
+    let mut offset = 0;
     loop {
         tokio::select! {
             n = stream.peek(&mut buf) => {
@@ -166,8 +168,9 @@ async fn handle_stream(mut stream: TcpStream, db: &Database, reply: bool) -> Res
                 if n == 0 {
                     break;
                 }
-                let command = parse_command(&mut stream).await;
-                let _ = execute_command(&mut stream, command, db, tx.clone(), reply).await;
+                let (command,_offset) = parse_command(&mut stream).await;
+                let _ = execute_command(&mut stream, command, db, tx.clone(), reply, offset).await;
+                offset += _offset;
             }
 
             Some(msg) = rx.recv() => {
@@ -217,7 +220,7 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, 
 
     println!("Send handshake 2");
 
-    let rec = parse_simple_string(&mut stream).await.unwrap();
+    let (rec, _) = parse_simple_string(&mut stream).await.unwrap();
     println!("PSYNC: {}", rec);
     let _ = receive_rdb_file(&mut stream).await.unwrap();
     println!("RDB received");

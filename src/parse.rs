@@ -3,8 +3,8 @@ use tokio::net::TcpStream;
 use crate::resp::parse_array;
 use crate::Command;
 
-pub async fn parse_command(stream: &mut TcpStream) -> Command {
-    let tokens = parse_array(stream).await.unwrap();
+pub async fn parse_command(stream: &mut TcpStream) -> (Command, usize) {
+    let (tokens, offset) = parse_array(stream).await.unwrap();
 
     let command = match tokens[0].to_lowercase().as_str() {
         "ping" => Command::Ping,
@@ -20,9 +20,6 @@ pub async fn parse_command(stream: &mut TcpStream) -> Command {
         "get" if tokens.len() == 2 => Command::Get(tokens[1].clone()),
         "keys" if tokens.len() == 2 => Command::Keys(tokens[1].clone()),
         "config" => {
-            if tokens.len() < 3 {
-                return Command::Unknown;
-            }
             match tokens[1].to_lowercase().as_str() {
                 "get" => Command::ConfigGet(tokens[2].clone()),
                 _ => Command::Unknown,
@@ -35,7 +32,12 @@ pub async fn parse_command(stream: &mut TcpStream) -> Command {
                 Command::Info(Some(tokens[1].clone()))
             }
         }
-        "replconf" => Command::Replconf(tokens[1..].iter().map(|s| s.clone().to_lowercase()).collect()),
+        "replconf" => Command::Replconf(
+            tokens[1..]
+                .iter()
+                .map(|s| s.clone().to_lowercase())
+                .collect(),
+        ),
         "psync" if tokens.len() == 3 => {
             let offset = if tokens[2] == "-1" {
                 None
@@ -47,5 +49,5 @@ pub async fn parse_command(stream: &mut TcpStream) -> Command {
         _ => Command::Unknown,
     };
 
-    command
+    (command, offset)
 }
