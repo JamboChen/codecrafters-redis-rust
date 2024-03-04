@@ -127,12 +127,9 @@ async fn execute_command(
 
             bytes.freeze()
         },
-        Command::Wait(count,_timeout )=>{
-            if count == 0 {
-                Bytes::from_static(b":0\r\n")
-            } else {
-                Bytes::from_static(b"-ERR Timeout\r\n")
-            }
+        Command::Wait(_count,_timeout )=>{
+            let repl_count = db.replication_count().await;
+            Bytes::from(format!(":{}\r\n", repl_count))
         }
 
         Command::Unknown => Bytes::from_static(b"-ERR unknown command\r\n"),

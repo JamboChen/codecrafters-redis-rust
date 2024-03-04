@@ -131,6 +131,11 @@ impl Database {
             let _ = tx.send(String::from_utf8_lossy(cmd).to_string());
         }
     }
+
+    pub async fn replication_count(&self) -> usize {
+        let replications = self.replications.lock().await;
+        replications.len()
+    }
 }
 
 fn length_encode(buf: &[u8]) -> Option<(usize, usize)> {
