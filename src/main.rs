@@ -104,12 +104,11 @@ async fn execute_command(
                 db.add_replication(tx).await;
                 Bytes::from_static(b"+OK\r\n")
             }
-            "getack" if args[1] == "*" =>{
-                reply=true;
-                 encoding_array(&["REPLCONF", "ACK", "0"])},
-            _ => {
-                Bytes::from_static(b"-ERR Unrecognized REPLCONF option\r\n")
+            "getack" if args[1] == "*" => {
+                reply = true;
+                encoding_array(&["REPLCONF", "ACK", "0"])
             }
+            _ => Bytes::from_static(b"-ERR Unrecognized REPLCONF option\r\n"),
         },
         Command::Psync(_, _) => {
             let id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
@@ -136,7 +135,7 @@ async fn execute_command(
     }
     Ok(())
 }
- 
+
 fn execute_info_command(parm: String, config: &Config) -> Bytes {
     match parm.as_str() {
         "replication" => {
