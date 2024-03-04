@@ -32,6 +32,7 @@ pub enum Command {
     Info(Option<String>),
     Replconf(Vec<String>),
     Psync(String, Option<usize>),
+    Wait(u64, u64),
     Unknown,
 }
 
@@ -125,6 +126,13 @@ async fn execute_command(
             bytes.extend(resp::rdb_file(&rdb::empty_rdb()));
 
             bytes.freeze()
+        },
+        Command::Wait(count,_timeout )=>{
+            if count == 0 {
+                Bytes::from_static(b":0\r\n")
+            } else {
+                Bytes::from_static(b"-ERR Timeout\r\n")
+            }
         }
 
         Command::Unknown => Bytes::from_static(b"-ERR unknown command\r\n"),

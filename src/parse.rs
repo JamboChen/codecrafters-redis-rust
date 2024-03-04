@@ -19,12 +19,10 @@ pub async fn parse_command(stream: &mut TcpStream) -> (Command, usize) {
         },
         "get" if tokens.len() == 2 => Command::Get(tokens[1].clone()),
         "keys" if tokens.len() == 2 => Command::Keys(tokens[1].clone()),
-        "config" => {
-            match tokens[1].to_lowercase().as_str() {
-                "get" => Command::ConfigGet(tokens[2].clone()),
-                _ => Command::Unknown,
-            }
-        }
+        "config" => match tokens[1].to_lowercase().as_str() {
+            "get" => Command::ConfigGet(tokens[2].clone()),
+            _ => Command::Unknown,
+        },
         "info" => {
             if tokens.len() < 2 {
                 Command::Info(None)
@@ -45,6 +43,11 @@ pub async fn parse_command(stream: &mut TcpStream) -> (Command, usize) {
                 Some(tokens[2].parse().unwrap())
             };
             Command::Psync(tokens[1].clone(), offset)
+        }
+        "wait" if tokens.len() == 3 => {
+            let count = tokens[1].parse().unwrap();
+            let timeout = tokens[2].parse().unwrap();
+            Command::Wait(count, timeout)
         }
         _ => Command::Unknown,
     };
