@@ -8,7 +8,7 @@ mod store;
 
 use config::Config;
 use parse::parse_command;
-use resp::{parse_simple_string, receive_rdb_file};
+use resp::{encoding_array, parse_simple_string, receive_rdb_file};
 use std::io::Error;
 use std::sync::Arc;
 use store::Database;
@@ -21,6 +21,7 @@ use tokio::{
 
 use bytes::{Bytes, BytesMut};
 
+#[derive(Debug)]
 pub enum Command {
     Ping,
     Echo(String),
@@ -41,6 +42,7 @@ async fn execute_command(
     tx: mpsc::UnboundedSender<String>,
     mut reply: bool,
 ) -> Result<(), Error> {
+    println!("Command: {:?}", command);
     let resp: Bytes = match command {
         Command::Ping => Bytes::from_static(b"+PONG\r\n"),
         Command::Echo(echo_arg) => Bytes::from(format!("+{}\r\n", echo_arg)),
@@ -94,19 +96,21 @@ async fn execute_command(
             Some(parm) => execute_info_command(parm, db.config()),
             None => Bytes::from_static(b"-Failed to fetch\r\n"),
         },
-        Command::Replconf(args) => {
-            match args[0].as_str() {
-                "listening-port" => {
-                    let ip: String = stream.peer_addr().unwrap().ip().to_string();
-                    let port = args[1].parse::<u16>().unwrap();
-                    println!("replication added: {}:{}", &ip, port);
-                    db.add_replication(tx).await;
-                }
-                _ => {}
+        Command::Replconf(args) => match args[0].as_str() {
+            "listening-port" => {
+                let ip: String = stream.peer_addr().unwrap().ip().to_string();
+                let port = args[1].parse::<u16>().unwrap();
+                println!("replication added: {}:{}", &ip, port);
+                db.add_replication(tx).await;
+                Bytes::from_static(b"+OK\r\n")
             }
-
-            Bytes::from_static(b"+OK\r\n")
-        }
+            "getack" if args[1] == "*" =>{
+                reply=true;
+                 encoding_array(&["REPLCONF", "ACK", "0"])},
+            _ => {
+                Bytes::from_static(b"-ERR Unrecognized REPLCONF option\r\n")
+            }
+        },
         Command::Psync(_, _) => {
             let id = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
             let offset = 0;
@@ -220,7 +224,6 @@ async fn connect_to_master(address: &str, config: &Config) -> Result<TcpStream, 
     println!("RDB received");
     Ok(stream)
 }
-
 
 #[tokio::main]
 async fn main() {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 
 use crate::config::Config;
 use std::fs::File;
@@ -14,7 +14,7 @@ struct ExpiringValue {
 }
 
 pub struct Database {
-    db: RwLock<HashMap<String, ExpiringValue>>,
+    db: Mutex<HashMap<String, ExpiringValue>>,
     config: Config,
     replications: Mutex<Vec<UnboundedSender<String>>>,
 }
@@ -36,7 +36,7 @@ impl Database {
         };
 
         Database {
-            db: RwLock::new(db),
+            db: Mutex::new(db),
             config,
             replications: Mutex::new(Vec::new()),
         }
@@ -51,7 +51,7 @@ impl Database {
             value: value.to_owned(),
             expires_at: None,
         };
-        let mut db = self.db.write().await;
+        let mut db = self.db.lock().await;
         db.insert(key.to_owned(), value);
     }
 
@@ -62,7 +62,7 @@ impl Database {
             value: value.to_owned(),
             expires_at: Some(now + duration),
         };
-        let mut db = self.db.write().await;
+        let mut db = self.db.lock().await;
         db.insert(key.to_owned(), value);
     }
 
@@ -70,14 +70,14 @@ impl Database {
         let now = SystemTime::now();
 
         let value = {
-            let db = self.db.read().await;
+            let db = self.db.lock().await;
             db.get(key).cloned()
         };
         match value {
             Some(v) => match v.expires_at {
                 Some(expires_at) if expires_at < now => {
                     println!("now: {:?}, expires_at: {:?}", now, expires_at);
-                    let mut db = self.db.write().await;
+                    let mut db = self.db.lock().await;
                     db.remove(key);
                     None
                 }
@@ -93,7 +93,7 @@ impl Database {
         let mut valid_keys = Vec::new();
 
         {
-            let db = self.db.read().await;
+            let db = self.db.lock().await;
             for (key, value) in db.iter() {
                 match value.expires_at {
                     Some(expires_at) if expires_at < now => {
@@ -107,7 +107,7 @@ impl Database {
         }
 
         {
-            let mut db = self.db.write().await;
+            let mut db = self.db.lock().await;
             for key in expired_keys {
                 db.remove(&key);
             }

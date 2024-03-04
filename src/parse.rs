@@ -35,7 +35,7 @@ pub async fn parse_command(stream: &mut TcpStream) -> Command {
                 Command::Info(Some(tokens[1].clone()))
             }
         }
-        "replconf" => Command::Replconf(tokens[1..].iter().map(|s| s.clone()).collect()),
+        "replconf" => Command::Replconf(tokens[1..].iter().map(|s| s.clone().to_lowercase()).collect()),
         "psync" if tokens.len() == 3 => {
             let offset = if tokens[2] == "-1" {
                 None
