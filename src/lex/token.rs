@@ -51,7 +51,7 @@ pub enum TokenType {
     Var,
     While,
 
-    EOF,
+    Eof,
 }
 
 impl Display for TokenType {
@@ -95,7 +95,7 @@ impl Display for TokenType {
             TokenType::True => "TRUE",
             TokenType::Var => "VAR",
             TokenType::While => "WHILE",
-            TokenType::EOF => "EOF",
+            TokenType::Eof => "EOF",
         };
 
         write!(f, "{}", output)

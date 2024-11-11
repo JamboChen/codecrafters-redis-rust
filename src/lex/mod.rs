@@ -42,7 +42,7 @@ impl<'a> Tokenizer<'a> {
         }
 
         self.tokens
-            .push(Token::new(TokenType::EOF, "".to_string(), None));
+            .push(Token::new(TokenType::Eof, "".to_string(), None));
 
         (self.tokens, self.error)
     }
@@ -94,6 +94,9 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
+        if let Some(token) = match_reserved(&identifier) {
+            return Ok(Token::new(token, identifier, None));
+        }
         Ok(Token::new(TokenType::Identifier, identifier.clone(), None))
     }
 
@@ -190,4 +193,28 @@ impl<'a> Tokenizer<'a> {
     fn peek(&mut self) -> Option<&char> {
         self.source.peek()
     }
+}
+
+fn match_reserved(identifier: &str) -> Option<TokenType> {
+    let ident = match identifier {
+        "and" => TokenType::And,
+        "class" => TokenType::Class,
+        "else" => TokenType::Else,
+        "false" => TokenType::False,
+        "for" => TokenType::For,
+        "fun" => TokenType::Fun,
+        "if" => TokenType::If,
+        "nil" => TokenType::Nil,
+        "or" => TokenType::Or,
+        "print" => TokenType::Print,
+        "return" => TokenType::Return,
+        "super" => TokenType::Super,
+        "this" => TokenType::This,
+        "true" => TokenType::True,
+        "var" => TokenType::Var,
+        "while" => TokenType::While,
+        _ => return None,
+    };
+
+    Some(ident)
 }
