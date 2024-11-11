@@ -1,8 +1,15 @@
 mod object;
 
 pub use object::Object;
+use thiserror::Error;
 
 use crate::{lex::TokenType, parse::Expr};
+
+#[derive(Error, Debug)]
+pub enum InterpreterError {
+    #[error("Operand must be a {0}.")]
+    TypeError(String),
+}
 
 pub struct Interpreter {}
 
@@ -13,7 +20,7 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&self, expr: &Expr) -> Result<(), ()> {
+    pub fn interpret(&self, expr: &Expr) -> Result<(), InterpreterError> {
         let value = self.evaluate(expr)?;
         println!("{}", self.stringify(&value));
 
@@ -30,7 +37,7 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    fn evaluate(&self, expr: &Expr) -> Result<Object, ()> {
+    fn evaluate(&self, expr: &Expr) -> Result<Object, InterpreterError> {
         match expr {
             Expr::Literal(obj) => Ok(obj.clone()),
             Expr::Unary(op, right) => self.eval_unary(&op.0, right),
@@ -39,7 +46,12 @@ impl Interpreter {
         }
     }
 
-    fn eval_binary(&self, left: &Expr, op: &TokenType, right: &Expr) -> Result<Object, ()> {
+    fn eval_binary(
+        &self,
+        left: &Expr,
+        op: &TokenType,
+        right: &Expr,
+    ) -> Result<Object, InterpreterError> {
         let left = self.evaluate(left)?;
         let right = self.evaluate(right)?;
 
@@ -50,16 +62,16 @@ impl Interpreter {
             (Object::String(l), TokenType::Plus, Object::String(r)) => {
                 Ok(Object::String(format!("{}{}", l, r)))
             }
-            _ => Err(()),
+            _ => Err(InterpreterError::TypeError("number".to_string())),
         }
     }
 
-    fn eval_unary(&self, op: &TokenType, right: &Expr) -> Result<Object, ()> {
+    fn eval_unary(&self, op: &TokenType, right: &Expr) -> Result<Object, InterpreterError> {
         let right = self.evaluate(right)?;
         match (op, &right) {
             (TokenType::Minus, Object::Number(n)) => Ok(Object::Number(-n)),
             (TokenType::Bang, _) => Ok(Object::Boolean(!self.truthy(&right))),
-            _ => Err(()),
+            _ => Err(InterpreterError::TypeError("number".to_string())),
         }
     }
 
@@ -82,7 +94,7 @@ fn eval_equal(left: &Object, right: &Object) -> bool {
     }
 }
 
-fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, ()> {
+fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, InterpreterError> {
     match op {
         TokenType::Plus => Ok(Object::Number(left + right)),
         TokenType::Minus => Ok(Object::Number(left - right)),
@@ -93,6 +105,6 @@ fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, ()> 
         TokenType::Less => Ok(Object::Boolean(left < right)),
         TokenType::LessEqual => Ok(Object::Boolean(left <= right)),
         TokenType::EqualEqual => Ok(Object::Boolean(left == right)),
-        _ => Err(()),
+        _ => Err(InterpreterError::TypeError("number".to_string())),
     }
 }

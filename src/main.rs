@@ -51,6 +51,12 @@ fn main() {
 
     let interpreter = interpreter::Interpreter::new();
     for expr in exprs.iter() {
-        let _ = interpreter.interpret(expr);
+        if let Err(e) = interpreter.interpret(expr) {
+            eprintln!("{}", e);
+            exit_code = 70;
+            break;
+        }
     }
+
+    std::process::exit(exit_code);
 }
