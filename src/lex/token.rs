@@ -3,7 +3,7 @@ use std::fmt::Display;
 use crate::interpreter::Object;
 
 #[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftBrace,
@@ -102,7 +102,8 @@ impl Display for TokenType {
     }
 }
 
-pub struct Token(TokenType, String, Option<Object>);
+#[derive(Clone)]
+pub struct Token(pub TokenType, String, pub Option<Object>);
 
 impl Token {
     pub fn new(token_type: TokenType, lexeme: String, literal: Option<Object>) -> Self {

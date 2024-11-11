@@ -4,6 +4,8 @@ use std::fmt::Display;
 pub enum Object {
     String(String),
     Number(f64),
+    Boolean(bool),
+    Nil,
 }
 
 impl Display for Object {
@@ -17,6 +19,8 @@ impl Display for Object {
                     format!("{}", n)
                 }
             }
+            Object::Boolean(b) => b.to_string(),
+            Object::Nil => "nil".to_string(),
         };
 
         write!(f, "{}", output)

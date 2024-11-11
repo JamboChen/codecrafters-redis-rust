@@ -14,24 +14,30 @@ fn main() {
     let command = &args[1];
     let filename = &args[2];
 
-    match command.as_str() {
-        "tokenize" => {
-            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
-                eprintln!("Failed to read file {}", filename);
-                String::new()
-            });
+    // let (command, filename) = ("parse", "test.lox");
 
-            let (tokens, errors) = lex::Tokenizer::new(&file_contents).tokenize();
-            for token in tokens {
-                println!("{}", token);
-            }
-            if !errors.is_empty() {
-                for error in errors {
-                    eprintln!("{}", error);
-                }
-                std::process::exit(65);
-            }
+    let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+        eprintln!("Failed to read file {}", filename);
+        String::new()
+    });
+
+    let (tokens, errors) = lex::Tokenizer::new(&file_contents).tokenize();
+    if command == "tokenize" {
+        for token in tokens.iter() {
+            println!("{}", token);
         }
-        _ => eprintln!("Unknown command: {}", command),
+    }
+    if !errors.is_empty() {
+        for error in errors {
+            eprintln!("{}", error);
+        }
+        std::process::exit(65);
+    }
+
+    let (exprs, _errors) = parse::Parser::from_tokens(tokens).parse();
+    if command == "parse" {
+        for expr in exprs.iter() {
+            println!("{}", expr);
+        }
     }
 }
