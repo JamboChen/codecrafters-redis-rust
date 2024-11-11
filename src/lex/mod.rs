@@ -41,6 +41,13 @@ impl<'a> Tokenizer<'a> {
             '}' => Token::new(TokenType::RightBrace, "}".to_string(), None),
             '(' => Token::new(TokenType::LeftParen, "(".to_string(), None),
             ')' => Token::new(TokenType::RightParen, ")".to_string(), None),
+            ',' => Token::new(TokenType::Comma, ",".to_string(), None),
+            '.' => Token::new(TokenType::Dot, ".".to_string(), None),
+            '-' => Token::new(TokenType::Minus, "-".to_string(), None),
+            '+' => Token::new(TokenType::Plus, "+".to_string(), None),
+            ';' => Token::new(TokenType::Semicolon, ";".to_string(), None),
+            '/' => Token::new(TokenType::Slash, "/".to_string(), None),
+            '*' => Token::new(TokenType::Star, "*".to_string(), None),
             _ => todo!(),
         };
 
