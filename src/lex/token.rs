@@ -57,7 +57,7 @@ impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let output = match self {
             TokenType::LeftBrace => "LEFT_BRACE",
-            TokenType::RightBrace => "RIGHT_Brace",
+            TokenType::RightBrace => "RIGHT_BRACE",
             TokenType::LeftParen => "LEFT_PAREN",
             TokenType::RightParen => "RIGHT_PAREN",
             TokenType::COMMA => "COMMA",
