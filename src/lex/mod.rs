@@ -72,11 +72,45 @@ impl<'a> Tokenizer<'a> {
             '<' => self.combine_or('<', '=', TokenType::LessEqual, TokenType::Less),
             '>' => self.combine_or('>', '=', TokenType::GreaterEqual, TokenType::Greater),
             '"' => self.match_string()?,
+            n if n.is_digit(10) => self.match_number(n)?,
             s if s.is_whitespace() => return Ok(None),
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
         Ok(Some(token))
+    }
+
+    fn match_number(&mut self, curr: char) -> Result<Token, TokenizerError> {
+        let mut number = String::new();
+        number.push(curr);
+
+        while let Some(c) = self.peek() {
+            if c.is_digit(10) {
+                number.push(*c);
+                self.next();
+            } else {
+                break;
+            }
+        }
+
+        if let Some('.') = self.peek() {
+            number.push('.');
+            self.next();
+            while let Some(c) = self.peek() {
+                if c.is_digit(10) {
+                    number.push(*c);
+                    self.next();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Ok(Token::new(
+            TokenType::Number,
+            number.clone(),
+            Some(Object::Number(number.parse().unwrap())),
+        ))
     }
 
     fn match_string(&mut self) -> Result<Token, TokenizerError> {
