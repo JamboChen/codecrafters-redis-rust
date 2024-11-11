@@ -7,6 +7,7 @@ pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
+    Variable(String),
 }
 
 impl Display for Expr {
@@ -16,6 +17,7 @@ impl Display for Expr {
             Expr::Unary(token, right) => format!("({} {})", token.1, right),
             Expr::Binary(left, token, right) => format!("({} {} {})", token.1, left, right),
             Expr::Grouping(expr) => format!("(group {})", expr),
+            Expr::Variable(name) => name.to_string(),
         };
 
         write!(f, "{}", output)
@@ -25,6 +27,7 @@ impl Display for Expr {
 pub enum Statement {
     Print(Expr),
     Expression(Expr),
+    Var(String, Option<Expr>),
 }
 
 impl Display for Statement {

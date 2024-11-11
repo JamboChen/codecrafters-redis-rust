@@ -24,43 +24,13 @@ impl Parser {
         let mut errors = Vec::new();
 
         while !self.is_at_end() {
-            match self.statement() {
+            match self.declaration() {
                 Ok(expr) => stmts.push(expr),
                 Err(e) => errors.push(e),
             }
         }
 
         (stmts, errors)
-    }
-}
-
-impl Parser {
-    fn statement(&mut self) -> Result<Statement, ParserError> {
-        match self.peek().0 {
-            TokenType::Print => {
-                self.pos += 1;
-                self.print_statement()
-            }
-            _ => self.expression_statement(),
-        }
-    }
-
-    fn print_statement(&mut self) -> Result<Statement, ParserError> {
-        let expr = self.expression()?;
-        self.expected(TokenType::Semicolon).unwrap();
-        Ok(Statement::Print(expr))
-    }
-
-    fn expression_statement(&mut self) -> Result<Statement, ParserError> {
-        let expr = self.expression()?;
-        self.expected(TokenType::Semicolon).unwrap();
-        Ok(Statement::Expression(expr))
-    }
-}
-
-impl Parser {
-    pub fn from_tokens(tokens: Vec<Token>) -> Self {
-        Parser { tokens, pos: 0 }
     }
 
     pub fn parse_expr(&mut self) -> (Vec<Expr>, Vec<ParserError>) {
@@ -75,6 +45,56 @@ impl Parser {
         }
 
         (exprs, errors)
+    }
+}
+
+impl Parser {
+    fn declaration(&mut self) -> Result<Statement, ParserError> {
+        match self.peek().0 {
+            TokenType::Var => self.var_decl(),
+            _ => self.statement(),
+        }
+    }
+
+    fn var_decl(&mut self) -> Result<Statement, ParserError> {
+        self.expected(TokenType::Var)?;
+        let name = self.expected(TokenType::Identifier)?.clone();
+        let expr = if self.peek().0 == TokenType::Equal {
+            self.next();
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.expected(TokenType::Semicolon)?;
+
+        Ok(Statement::Var(name.1, expr))
+    }
+
+    fn statement(&mut self) -> Result<Statement, ParserError> {
+        match self.peek().0 {
+            TokenType::Print => self.print_statement(),
+            _ => self.expression_statement(),
+        }
+    }
+
+    fn print_statement(&mut self) -> Result<Statement, ParserError> {
+        self.expected(TokenType::Print)?;
+        let expr = self.expression()?;
+        self.expected(TokenType::Semicolon)?;
+        Ok(Statement::Print(expr))
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement, ParserError> {
+        let expr = self.expression()?;
+        self.expected(TokenType::Semicolon)?;
+        Ok(Statement::Expression(expr))
+    }
+}
+
+impl Parser {
+    pub fn from_tokens(tokens: Vec<Token>) -> Self {
+        Parser { tokens, pos: 0 }
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
@@ -154,9 +174,10 @@ impl Parser {
             TokenType::Nil => Expr::Literal(Object::Nil),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
-                self.expected(TokenType::RightParen).unwrap();
+                self.expected(TokenType::RightParen)?;
                 Expr::Grouping(Box::new(expr))
             }
+            TokenType::Identifier => Expr::Variable(peeked.1.to_string()),
             _ => return Err(ParserError::UnexpectedToken(peeked.3, peeked.1.to_string())),
         };
 
@@ -165,12 +186,14 @@ impl Parser {
 
     /// Expects the next token to be of the given type.
     /// If not, rasies an error.
-    fn expected(&mut self, token_type: TokenType) -> Result<(), ()> {
+    fn expected(&mut self, token_type: TokenType) -> Result<&Token, ParserError> {
         if self.peek().0 == token_type {
-            self.pos += 1;
-            Ok(())
+            Ok(self.next())
         } else {
-            Err(())
+            Err(ParserError::UnexpectedToken(
+                self.peek().3,
+                self.peek().1.clone(),
+            ))
         }
     }
 

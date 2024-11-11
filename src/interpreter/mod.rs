@@ -1,5 +1,7 @@
+mod enviroment;
 mod object;
 
+use enviroment::Environment;
 pub use object::Object;
 use thiserror::Error;
 
@@ -12,18 +14,24 @@ use crate::{
 pub enum InterpreterError {
     #[error("Operand must be a {0}.")]
     TypeError(String),
+    #[error("Undefined variable.")]
+    UndefinedVariable,
 }
 
-pub struct Interpreter {}
+pub struct Interpreter {
+    env: Environment,
+}
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter {}
+        Interpreter {
+            env: Environment::new(),
+        }
     }
 }
 
 impl Interpreter {
-    pub fn interpret(&self, stmt: &Statement) -> Result<(), InterpreterError> {
+    pub fn interpret(&mut self, stmt: &Statement) -> Result<(), InterpreterError> {
         match stmt {
             Statement::Expression(expr) => {
                 self.evaluate(expr)?;
@@ -31,6 +39,13 @@ impl Interpreter {
             Statement::Print(expr) => {
                 let value = self.evaluate(expr)?;
                 println!("{}", self.stringify(&value));
+            }
+            Statement::Var(name, init) => {
+                let value = match init {
+                    Some(expr) => self.evaluate(expr)?,
+                    None => Object::Nil,
+                };
+                self.env.define(name.clone(), value);
             }
         };
 
@@ -60,6 +75,7 @@ impl Interpreter {
             Expr::Unary(op, right) => self.eval_unary(&op.0, right),
             Expr::Binary(left, op, right) => self.eval_binary(left, &op.0, right),
             Expr::Grouping(expr) => self.evaluate(expr),
+            Expr::Variable(name) => self.env.get(name),
         }
     }
 
