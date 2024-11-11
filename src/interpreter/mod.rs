@@ -24,12 +24,15 @@ impl Interpreter {
 
 impl Interpreter {
     pub fn interpret(&self, stmt: &Statement) -> Result<(), InterpreterError> {
-        let expr = match stmt {
-            Statement::Expression(expr) => expr,
-            Statement::Print(expr) => expr,
+        match stmt {
+            Statement::Expression(expr) => {
+                self.evaluate(expr)?;
+            }
+            Statement::Print(expr) => {
+                let value = self.evaluate(expr)?;
+                println!("{}", self.stringify(&value));
+            }
         };
-        let value = self.evaluate(expr)?;
-        println!("{}", self.stringify(&value));
 
         Ok(())
     }
