@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::parse::Object;
+use crate::interpreter::Object;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]

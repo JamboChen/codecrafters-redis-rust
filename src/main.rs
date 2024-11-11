@@ -1,13 +1,13 @@
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+mod interpreter;
 mod lex;
 mod parse;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        writeln!(io::stderr(), "Usage: {} tokenize <filename>", args[0]).unwrap();
+        eprintln!("Usage: {} tokenize <filename>", args[0]);
         return;
     }
 
@@ -17,7 +17,7 @@ fn main() {
     match command.as_str() {
         "tokenize" => {
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
-                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+                eprintln!("Failed to read file {}", filename);
                 String::new()
             });
 
@@ -25,16 +25,13 @@ fn main() {
             for token in tokens {
                 println!("{}", token);
             }
-            if errors.len() > 0 {
+            if !errors.is_empty() {
                 for error in errors {
                     eprintln!("{}", error);
                 }
                 std::process::exit(65);
             }
         }
-        _ => {
-            writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
-            return;
-        }
+        _ => eprintln!("Unknown command: {}", command),
     }
 }

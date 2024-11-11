@@ -5,7 +5,7 @@ use std::{iter::Peekable, str::Chars};
 use thiserror::Error;
 pub use token::{Token, TokenType};
 
-use crate::parse::Object;
+use crate::interpreter::Object;
 
 #[derive(Error, Debug)]
 pub enum TokenizerError {
@@ -72,7 +72,7 @@ impl<'a> Tokenizer<'a> {
             '<' => self.combine_or('<', '=', TokenType::LessEqual, TokenType::Less),
             '>' => self.combine_or('>', '=', TokenType::GreaterEqual, TokenType::Greater),
             '"' => self.match_string()?,
-            n if n.is_digit(10) => self.match_number(n)?,
+            n if n.is_ascii_digit() => self.match_number(n)?,
             s if s.is_alphabetic() || s == '_' => self.match_identifier(s)?,
             s if s.is_whitespace() => return Ok(None),
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
@@ -105,7 +105,7 @@ impl<'a> Tokenizer<'a> {
         number.push(curr);
 
         while let Some(c) = self.peek() {
-            if c.is_digit(10) {
+            if c.is_ascii_digit() {
                 number.push(*c);
                 self.next();
             } else {
@@ -117,7 +117,7 @@ impl<'a> Tokenizer<'a> {
             number.push('.');
             self.next();
             while let Some(c) = self.peek() {
-                if c.is_digit(10) {
+                if c.is_ascii_digit() {
                     number.push(*c);
                     self.next();
                 } else {
