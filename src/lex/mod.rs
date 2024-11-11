@@ -67,6 +67,7 @@ impl<'a> Tokenizer<'a> {
             '!' => self.combine_or('!', '=', TokenType::BangEqual, TokenType::Bang),
             '<' => self.combine_or('<', '=', TokenType::LessEqual, TokenType::Less),
             '>' => self.combine_or('>', '=', TokenType::GreaterEqual, TokenType::Greater),
+            s if s.is_whitespace() => return Ok(None),
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
