@@ -15,9 +15,17 @@ impl Interpreter {
 impl Interpreter {
     pub fn interpret(&self, expr: &Expr) -> Result<(), ()> {
         let value = self.evaluate(expr)?;
-        println!("{}", value);
+        println!("{}", self.stringify(&value));
 
         Ok(())
+    }
+
+    fn stringify(&self, obj: &Object) -> String {
+        if let Object::Number(n) = obj {
+            n.to_string()
+        } else {
+            obj.to_string()
+        }
     }
 }
 
