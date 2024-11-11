@@ -43,21 +43,11 @@ impl Interpreter {
         let left = self.evaluate(left)?;
         let right = self.evaluate(right)?;
 
-        let (Object::Number(left), Object::Number(right)) = (left, right) else {
-            return Err(());
-        };
-
-        match op {
-            TokenType::Plus => Ok(Object::Number(left + right)),
-            TokenType::Minus => Ok(Object::Number(left - right)),
-            TokenType::Star => Ok(Object::Number(left * right)),
-            TokenType::Slash => Ok(Object::Number(left / right)),
-            TokenType::Greater => Ok(Object::Boolean(left > right)),
-            TokenType::GreaterEqual => Ok(Object::Boolean(left >= right)),
-            TokenType::Less => Ok(Object::Boolean(left < right)),
-            TokenType::LessEqual => Ok(Object::Boolean(left <= right)),
-            TokenType::EqualEqual => Ok(Object::Boolean(left == right)),
-            TokenType::BangEqual => Ok(Object::Boolean(left != right)),
+        match (&left, op, &right) {
+            (Object::Number(l), op, Object::Number(r)) => binary_number(l, op, r),
+            (Object::String(l), TokenType::Plus, Object::String(r)) => {
+                Ok(Object::String(format!("{}{}", l, r)))
+            }
             _ => Err(()),
         }
     }
@@ -77,5 +67,21 @@ impl Interpreter {
             Object::Boolean(b) => *b,
             _ => true,
         }
+    }
+}
+
+fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, ()> {
+    match op {
+        TokenType::Plus => Ok(Object::Number(left + right)),
+        TokenType::Minus => Ok(Object::Number(left - right)),
+        TokenType::Star => Ok(Object::Number(left * right)),
+        TokenType::Slash => Ok(Object::Number(left / right)),
+        TokenType::Greater => Ok(Object::Boolean(left > right)),
+        TokenType::GreaterEqual => Ok(Object::Boolean(left >= right)),
+        TokenType::Less => Ok(Object::Boolean(left < right)),
+        TokenType::LessEqual => Ok(Object::Boolean(left <= right)),
+        TokenType::EqualEqual => Ok(Object::Boolean(left == right)),
+        TokenType::BangEqual => Ok(Object::Boolean(left != right)),
+        _ => Err(()),
     }
 }
