@@ -21,9 +21,15 @@ fn main() {
                 String::new()
             });
 
-            let tokenizer = lex::Tokenizer::new(&file_contents).tokenize();
-            for token in tokenizer {
+            let (tokens, errors) = lex::Tokenizer::new(&file_contents).tokenize();
+            for token in tokens {
                 println!("{}", token);
+            }
+            if errors.len() > 0 {
+                for error in errors {
+                    eprintln!("{}", error);
+                }
+                std::process::exit(65);
             }
         }
         _ => {

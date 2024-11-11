@@ -2,14 +2,20 @@ mod token;
 
 use std::{iter::Peekable, str::Chars};
 
+use thiserror::Error;
 pub use token::{Token, TokenType};
+
+#[derive(Error, Debug)]
+pub enum TokenizerError {
+    #[error("[line {0}] Error: Unexpected character: {1}")]
+    UnexpectedCharacter(usize, char),
+}
 
 pub struct Tokenizer<'a> {
     source: Peekable<Chars<'a>>,
     tokens: Vec<Token>,
-
+    error: Vec<TokenizerError>,
     line: usize,
-    pos: usize,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -17,24 +23,26 @@ impl<'a> Tokenizer<'a> {
         Tokenizer {
             source: source.chars().peekable(),
             tokens: Vec::new(),
+            error: Vec::new(),
             line: 1,
-            pos: 0,
         }
     }
 
-    pub fn tokenize(mut self) -> Vec<Token> {
+    pub fn tokenize(mut self) -> (Vec<Token>, Vec<TokenizerError>) {
         while !self.is_at_end() {
-            let next_token = self.next_token().unwrap();
-            self.tokens.push(next_token);
+            match self.next_token() {
+                Ok(token) => self.tokens.push(token),
+                Err(e) => self.error.push(e),
+            }
         }
 
         self.tokens
             .push(Token::new(TokenType::EOF, "".to_string(), None));
 
-        self.tokens
+        (self.tokens, self.error)
     }
 
-    fn next_token(&mut self) -> Result<Token, ()> {
+    fn next_token(&mut self) -> Result<Token, TokenizerError> {
         let c = self.next().unwrap();
         let token = match c {
             '{' => Token::new(TokenType::LeftBrace, "{".to_string(), None),
@@ -48,7 +56,7 @@ impl<'a> Tokenizer<'a> {
             ';' => Token::new(TokenType::Semicolon, ";".to_string(), None),
             '/' => Token::new(TokenType::Slash, "/".to_string(), None),
             '*' => Token::new(TokenType::Star, "*".to_string(), None),
-            _ => todo!(),
+            _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
         Ok(token)
@@ -59,8 +67,11 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn next(&mut self) -> Option<char> {
-        self.pos += 1;
-        self.source.next()
+        let c = self.source.next();
+        if c == Some('\n') {
+            self.line += 1;
+        }
+        c
     }
 
     fn peek(&mut self) -> Option<&char> {
