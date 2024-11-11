@@ -48,7 +48,7 @@ impl Interpreter {
                 self.env.define(name.clone(), value);
             }
             Statement::Block(stmts) => {
-                let env = Environment::new();
+                let env = Environment::new_enclosed(&self.env);
                 let mut interpreter = Interpreter { env };
                 for stmt in stmts {
                     interpreter.interpret(stmt)?;
