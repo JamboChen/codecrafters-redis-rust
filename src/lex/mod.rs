@@ -56,20 +56,27 @@ impl<'a> Tokenizer<'a> {
             ';' => Token::new(TokenType::Semicolon, ";".to_string(), None),
             '/' => Token::new(TokenType::Slash, "/".to_string(), None),
             '*' => Token::new(TokenType::Star, "*".to_string(), None),
-            '=' => self.match_equal()?,
+            '=' => self.combine_or('=', '=', TokenType::EqualEqual, TokenType::Equal),
+            '!' => self.combine_or('!', '=', TokenType::BangEqual, TokenType::Bang),
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
         Ok(token)
     }
 
-    fn match_equal(&mut self) -> Result<Token, TokenizerError> {
+    fn combine_or(
+        &mut self,
+        curr: char,
+        with: char,
+        combined: TokenType,
+        single: TokenType,
+    ) -> Token {
         match self.peek() {
-            Some('=') => {
+            Some(c) if *c == with => {
                 self.next();
-                Ok(Token::new(TokenType::EqualEqual, "==".to_string(), None))
+                Token::new(combined, format!("{}{}", curr, with), None)
             }
-            _ => Ok(Token::new(TokenType::Equal, "=".to_string(), None)),
+            _ => Token::new(single, curr.to_string(), None),
         }
     }
 
