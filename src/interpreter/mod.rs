@@ -44,6 +44,8 @@ impl Interpreter {
         let right = self.evaluate(right)?;
 
         match (&left, op, &right) {
+            (l, TokenType::EqualEqual, r) => Ok(Object::Boolean(eval_equal(l, r))),
+            (l, TokenType::BangEqual, r) => Ok(Object::Boolean(!eval_equal(l, r))),
             (Object::Number(l), op, Object::Number(r)) => binary_number(l, op, r),
             (Object::String(l), TokenType::Plus, Object::String(r)) => {
                 Ok(Object::String(format!("{}{}", l, r)))
@@ -70,6 +72,16 @@ impl Interpreter {
     }
 }
 
+fn eval_equal(left: &Object, right: &Object) -> bool {
+    match (left, right) {
+        (Object::Number(l), Object::Number(r)) => l == r,
+        (Object::String(l), Object::String(r)) => l == r,
+        (Object::Boolean(l), Object::Boolean(r)) => l == r,
+        (Object::Nil, Object::Nil) => true,
+        _ => false,
+    }
+}
+
 fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, ()> {
     match op {
         TokenType::Plus => Ok(Object::Number(left + right)),
@@ -81,7 +93,6 @@ fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, ()> 
         TokenType::Less => Ok(Object::Boolean(left < right)),
         TokenType::LessEqual => Ok(Object::Boolean(left <= right)),
         TokenType::EqualEqual => Ok(Object::Boolean(left == right)),
-        TokenType::BangEqual => Ok(Object::Boolean(left != right)),
         _ => Err(()),
     }
 }
