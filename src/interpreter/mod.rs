@@ -33,6 +33,7 @@ impl Interpreter {
     fn evaluate(&self, expr: &Expr) -> Result<Object, ()> {
         match expr {
             Expr::Literal(obj) => Ok(obj.clone()),
+            Expr::Grouping(expr) => self.evaluate(expr),
             _ => todo!(),
         }
     }
