@@ -34,8 +34,31 @@ impl Interpreter {
         match expr {
             Expr::Literal(obj) => Ok(obj.clone()),
             Expr::Unary(op, right) => self.eval_unary(&op.0, right),
+            Expr::Binary(left, op, right) => self.eval_binary(left, &op.0, right),
             Expr::Grouping(expr) => self.evaluate(expr),
-            _ => todo!(),
+        }
+    }
+
+    fn eval_binary(&self, left: &Expr, op: &TokenType, right: &Expr) -> Result<Object, ()> {
+        let left = self.evaluate(left)?;
+        let right = self.evaluate(right)?;
+
+        let (Object::Number(left), Object::Number(right)) = (left, right) else {
+            return Err(());
+        };
+
+        match op {
+            TokenType::Plus => Ok(Object::Number(left + right)),
+            TokenType::Minus => Ok(Object::Number(left - right)),
+            TokenType::Star => Ok(Object::Number(left * right)),
+            TokenType::Slash => Ok(Object::Number(left / right)),
+            TokenType::Greater => Ok(Object::Boolean(left > right)),
+            TokenType::GreaterEqual => Ok(Object::Boolean(left >= right)),
+            TokenType::Less => Ok(Object::Boolean(left < right)),
+            TokenType::LessEqual => Ok(Object::Boolean(left <= right)),
+            TokenType::EqualEqual => Ok(Object::Boolean(left == right)),
+            TokenType::BangEqual => Ok(Object::Boolean(left != right)),
+            _ => Err(()),
         }
     }
 
