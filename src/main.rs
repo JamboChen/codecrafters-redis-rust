@@ -58,7 +58,7 @@ fn main() {
             std::process::exit(65);
         }
 
-        let mut interpreter = interpreter::Interpreter::new();
+        let interpreter = interpreter::Interpreter::new();
         for expr in exprs.iter() {
             if let Err(e) = interpreter.eval(expr) {
                 eprintln!("{}", e);
@@ -79,7 +79,7 @@ fn main() {
             std::process::exit(65);
         }
 
-        let mut interpreter = interpreter::Interpreter::new();
+        let interpreter = interpreter::Interpreter::new();
         for stmt in exprs.iter() {
             if let Err(e) = interpreter.interpret(stmt) {
                 eprintln!("{}", e);

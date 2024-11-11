@@ -31,7 +31,7 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&mut self, stmt: &Statement) -> Result<(), InterpreterError> {
+    pub fn interpret(&self, stmt: &Statement) -> Result<(), InterpreterError> {
         match stmt {
             Statement::Expression(expr) => {
                 self.evaluate(expr)?;
@@ -49,7 +49,7 @@ impl Interpreter {
             }
             Statement::Block(stmts) => {
                 let env = Environment::new_enclosed(&self.env);
-                let mut interpreter = Interpreter { env };
+                let interpreter = Interpreter { env };
                 for stmt in stmts {
                     interpreter.interpret(stmt)?;
                 }
@@ -69,14 +69,14 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn eval(&mut self, expr: &Expr) -> Result<(), InterpreterError> {
+    pub fn eval(&self, expr: &Expr) -> Result<(), InterpreterError> {
         let value = self.evaluate(expr)?;
         println!("{}", self.stringify(&value));
 
         Ok(())
     }
 
-    fn evaluate(&mut self, expr: &Expr) -> Result<Object, InterpreterError> {
+    fn evaluate(&self, expr: &Expr) -> Result<Object, InterpreterError> {
         match expr {
             Expr::Literal(obj) => Ok(obj.clone()),
             Expr::Unary(op, right) => self.eval_unary(&op.0, right),
@@ -92,7 +92,7 @@ impl Interpreter {
     }
 
     fn eval_binary(
-        &mut self,
+        &self,
         left: &Expr,
         op: &TokenType,
         right: &Expr,
@@ -111,7 +111,7 @@ impl Interpreter {
         }
     }
 
-    fn eval_unary(&mut self, op: &TokenType, right: &Expr) -> Result<Object, InterpreterError> {
+    fn eval_unary(&self, op: &TokenType, right: &Expr) -> Result<Object, InterpreterError> {
         let right = self.evaluate(right)?;
         match (op, &right) {
             (TokenType::Minus, Object::Number(n)) => Ok(Object::Number(-n)),
