@@ -98,7 +98,25 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Expr, ParserError> {
+        let expr = self.equality()?;
+
+        if self.peek().0 == TokenType::Equal {
+            self.next();
+            let value = self.assignment()?;
+            match expr {
+                Expr::Variable(name) => Ok(Expr::Assign(name, Box::new(value))),
+                _ => Err(ParserError::UnexpectedToken(
+                    self.peek().3,
+                    self.peek().1.clone(),
+                )),
+            }
+        } else {
+            Ok(expr)
+        }
     }
 
     fn equality(&mut self) -> Result<Expr, ParserError> {

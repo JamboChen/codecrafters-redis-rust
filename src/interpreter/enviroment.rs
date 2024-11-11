@@ -23,4 +23,13 @@ impl Environment {
             .cloned()
             .ok_or(InterpreterError::UndefinedVariable(name.to_string()))
     }
+
+    pub fn assign(&mut self, name: &str, value: Object) -> Result<(), InterpreterError> {
+        if self.values.contains_key(name) {
+            self.values.insert(name.to_string(), value);
+            Ok(())
+        } else {
+            Err(InterpreterError::UndefinedVariable(name.to_string()))
+        }
+    }
 }

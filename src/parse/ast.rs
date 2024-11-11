@@ -8,6 +8,7 @@ pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
     Variable(String),
+    Assign(String, Box<Expr>),
 }
 
 impl Display for Expr {
@@ -18,6 +19,7 @@ impl Display for Expr {
             Expr::Binary(left, token, right) => format!("({} {} {})", token.1, left, right),
             Expr::Grouping(expr) => format!("(group {})", expr),
             Expr::Variable(name) => name.to_string(),
+            Expr::Assign(name, expr) => format!("(assign {} {})", name, expr),
         };
 
         write!(f, "{}", output)
