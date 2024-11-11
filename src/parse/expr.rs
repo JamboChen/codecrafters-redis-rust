@@ -14,6 +14,7 @@ impl Display for Expr {
         let output = match self {
             Expr::Literal(obj) => obj.to_string(),
             Expr::Binary(left, token, right) => format!("({} {} {})", token.0, left, right),
+            Expr::Grouping(expr) => format!("(group {})", expr),
             _ => todo!(),
         };
 

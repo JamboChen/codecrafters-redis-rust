@@ -120,7 +120,7 @@ impl Parser {
             TokenType::LeftParen => {
                 let expr = self.expression()?;
                 self.expected(TokenType::RightParen).unwrap();
-                expr
+                Expr::Grouping(Box::new(expr))
             }
             _ => return Err(()),
         };
