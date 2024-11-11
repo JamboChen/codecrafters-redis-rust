@@ -31,7 +31,8 @@ impl<'a> Tokenizer<'a> {
     pub fn tokenize(mut self) -> (Vec<Token>, Vec<TokenizerError>) {
         while !self.is_at_end() {
             match self.next_token() {
-                Ok(token) => self.tokens.push(token),
+                Ok(Some(token)) => self.tokens.push(token),
+                Ok(None) => continue,
                 Err(e) => self.error.push(e),
             }
         }
@@ -42,7 +43,7 @@ impl<'a> Tokenizer<'a> {
         (self.tokens, self.error)
     }
 
-    fn next_token(&mut self) -> Result<Token, TokenizerError> {
+    fn next_token(&mut self) -> Result<Option<Token>, TokenizerError> {
         let c = self.next().unwrap();
         let token = match c {
             '{' => Token::new(TokenType::LeftBrace, "{".to_string(), None),
@@ -54,7 +55,13 @@ impl<'a> Tokenizer<'a> {
             '-' => Token::new(TokenType::Minus, "-".to_string(), None),
             '+' => Token::new(TokenType::Plus, "+".to_string(), None),
             ';' => Token::new(TokenType::Semicolon, ";".to_string(), None),
-            '/' => Token::new(TokenType::Slash, "/".to_string(), None),
+            '/' => {
+                if let Some('/') = self.peek() {
+                    self.skip_comment();
+                    return Ok(None);
+                }
+                Token::new(TokenType::Slash, "/".to_string(), None)
+            }
             '*' => Token::new(TokenType::Star, "*".to_string(), None),
             '=' => self.combine_or('=', '=', TokenType::EqualEqual, TokenType::Equal),
             '!' => self.combine_or('!', '=', TokenType::BangEqual, TokenType::Bang),
@@ -63,7 +70,15 @@ impl<'a> Tokenizer<'a> {
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
-        Ok(token)
+        Ok(Some(token))
+    }
+
+    fn skip_comment(&mut self) {
+        while let Some(c) = self.next() {
+            if c == '\n' {
+                break;
+            }
+        }
     }
 
     fn combine_or(
