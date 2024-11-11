@@ -2,7 +2,7 @@ use crate::{
     interpreter::Object,
     lex::{Token, TokenType},
 };
-use expr::Expr;
+pub use expr::Expr;
 use thiserror::Error;
 
 mod expr;

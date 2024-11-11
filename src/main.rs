@@ -48,4 +48,9 @@ fn main() {
         }
         std::process::exit(exit_code);
     }
+
+    let interpreter = interpreter::Interpreter::new();
+    for expr in exprs.iter() {
+        let _ = interpreter.interpret(expr);
+    }
 }
