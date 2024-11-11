@@ -103,7 +103,7 @@ impl Display for TokenType {
 }
 
 #[derive(Clone)]
-pub struct Token(pub TokenType, String, pub Option<Object>);
+pub struct Token(pub TokenType, pub String, pub Option<Object>);
 
 impl Token {
     pub fn new(token_type: TokenType, lexeme: String, literal: Option<Object>) -> Self {
