@@ -73,11 +73,28 @@ impl<'a> Tokenizer<'a> {
             '>' => self.combine_or('>', '=', TokenType::GreaterEqual, TokenType::Greater),
             '"' => self.match_string()?,
             n if n.is_digit(10) => self.match_number(n)?,
+            s if s.is_alphabetic() || s == '_' => self.match_identifier(s)?,
             s if s.is_whitespace() => return Ok(None),
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
         Ok(Some(token))
+    }
+
+    fn match_identifier(&mut self, curr: char) -> Result<Token, TokenizerError> {
+        let mut identifier = String::new();
+        identifier.push(curr);
+
+        while let Some(&c) = self.peek() {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                identifier.push(c);
+                self.next();
+            } else {
+                break;
+            }
+        }
+
+        Ok(Token::new(TokenType::Identifier, identifier.clone(), None))
     }
 
     fn match_number(&mut self, curr: char) -> Result<Token, TokenizerError> {
@@ -115,18 +132,20 @@ impl<'a> Tokenizer<'a> {
 
     fn match_string(&mut self) -> Result<Token, TokenizerError> {
         let mut string = String::new();
-        while !self.is_at_end() {
-            match self.next() {
-                Some('"') => {
-                    return Ok(Token::new(
-                        TokenType::String,
-                        format!("\"{}\"", string),
-                        Some(Object::String(string)),
-                    ))
-                }
-                Some(c) => string.push(c),
-                None => return Err(TokenizerError::UnexpectedCharacter(self.line, '"')),
+        while let Some(c) = self.next() {
+            if c == '"' {
+                return Ok(Token::new(
+                    TokenType::String,
+                    format!("\"{}\"", string),
+                    Some(Object::String(string)),
+                ));
             }
+
+            if c == '\n' {
+                self.line += 1;
+            }
+
+            string.push(c);
         }
 
         Err(TokenizerError::UnexpectedString(self.line))
