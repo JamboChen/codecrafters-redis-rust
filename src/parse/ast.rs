@@ -21,3 +21,19 @@ impl Display for Expr {
         write!(f, "{}", output)
     }
 }
+
+pub enum Statement {
+    Print(Expr),
+    Expression(Expr),
+}
+
+impl Display for Statement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let output = match self {
+            Statement::Expression(expr) => format!("{}", expr),
+            _ => "Not implemented".to_string(),
+        };
+
+        write!(f, "{}", output)
+    }
+}

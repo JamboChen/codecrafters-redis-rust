@@ -14,7 +14,7 @@ fn main() {
     let command = &args[1];
     let filename = &args[2];
 
-    // let (command, filename) = ("parse", "test.lox");
+    // let (command, filename) = ("run", "test.lox");
 
     let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
         eprintln!("Failed to read file {}", filename);
@@ -35,28 +35,59 @@ fn main() {
         std::process::exit(exit_code);
     }
 
-    let (exprs, errors) = parse::Parser::from_tokens(tokens).parse();
-    if !errors.is_empty() {
-        for error in errors {
-            eprintln!("{}", error);
-        }
-        exit_code = 65;
-    }
     if command == "parse" {
+        let (exprs, errors) = parse::Parser::from_tokens(tokens).parse_expr();
+        if !errors.is_empty() {
+            for error in errors {
+                eprintln!("{}", error);
+            }
+            exit_code = 65;
+        }
         for expr in exprs.iter() {
             println!("{}", expr);
         }
         std::process::exit(exit_code);
     }
 
-    let interpreter = interpreter::Interpreter::new();
-    for expr in exprs.iter() {
-        if let Err(e) = interpreter.interpret(expr) {
-            eprintln!("{}", e);
-            exit_code = 70;
-            break;
+    if command == "evaluate" {
+        let (exprs, errors) = parse::Parser::from_tokens(tokens).parse_expr();
+        if !errors.is_empty() {
+            for error in errors {
+                eprintln!("{}", error);
+            }
+            std::process::exit(65);
         }
+
+        let interpreter = interpreter::Interpreter::new();
+        for expr in exprs.iter() {
+            if let Err(e) = interpreter.eval(expr) {
+                eprintln!("{}", e);
+                exit_code = 70;
+                break;
+            }
+        }
+
+        std::process::exit(exit_code);
     }
 
-    std::process::exit(exit_code);
+    if command == "run" {
+        let (exprs, errors) = parse::Parser::from_tokens(tokens).parse();
+        if !errors.is_empty() {
+            for error in errors {
+                eprintln!("{}", error);
+            }
+            std::process::exit(65);
+        }
+
+        let interpreter = interpreter::Interpreter::new();
+        for stmt in exprs.iter() {
+            if let Err(e) = interpreter.interpret(stmt) {
+                eprintln!("{}", e);
+                exit_code = 70;
+                break;
+            }
+        }
+
+        std::process::exit(exit_code);
+    }
 }

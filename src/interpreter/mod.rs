@@ -3,7 +3,10 @@ mod object;
 pub use object::Object;
 use thiserror::Error;
 
-use crate::{lex::TokenType, parse::Expr};
+use crate::{
+    lex::TokenType,
+    parse::{Expr, Statement},
+};
 
 #[derive(Error, Debug)]
 pub enum InterpreterError {
@@ -20,7 +23,11 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&self, expr: &Expr) -> Result<(), InterpreterError> {
+    pub fn interpret(&self, stmt: &Statement) -> Result<(), InterpreterError> {
+        let expr = match stmt {
+            Statement::Expression(expr) => expr,
+            Statement::Print(expr) => expr,
+        };
         let value = self.evaluate(expr)?;
         println!("{}", self.stringify(&value));
 
@@ -37,6 +44,13 @@ impl Interpreter {
 }
 
 impl Interpreter {
+    pub fn eval(&self, expr: &Expr) -> Result<(), InterpreterError> {
+        let value = self.evaluate(expr)?;
+        println!("{}", self.stringify(&value));
+
+        Ok(())
+    }
+
     fn evaluate(&self, expr: &Expr) -> Result<Object, InterpreterError> {
         match expr {
             Expr::Literal(obj) => Ok(obj.clone()),

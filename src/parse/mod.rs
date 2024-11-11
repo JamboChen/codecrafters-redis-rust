@@ -2,10 +2,10 @@ use crate::{
     interpreter::Object,
     lex::{Token, TokenType},
 };
-pub use expr::Expr;
+pub use ast::{Expr, Statement};
 use thiserror::Error;
 
-mod expr;
+mod ast;
 
 #[derive(Error, Debug)]
 pub enum ParserError {
@@ -19,11 +19,51 @@ pub struct Parser {
 }
 
 impl Parser {
+    pub fn parse(&mut self) -> (Vec<Statement>, Vec<ParserError>) {
+        let mut stmts = Vec::new();
+        let mut errors = Vec::new();
+
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(expr) => stmts.push(expr),
+                Err(e) => errors.push(e),
+            }
+        }
+
+        (stmts, errors)
+    }
+}
+
+impl Parser {
+    fn statement(&mut self) -> Result<Statement, ParserError> {
+        match self.peek().0 {
+            TokenType::Print => {
+                self.pos += 1;
+                self.print_statement()
+            }
+            _ => self.expression_statement(),
+        }
+    }
+
+    fn print_statement(&mut self) -> Result<Statement, ParserError> {
+        let expr = self.expression()?;
+        self.expected(TokenType::Semicolon).unwrap();
+        Ok(Statement::Print(expr))
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement, ParserError> {
+        let expr = self.expression()?;
+        self.expected(TokenType::Semicolon).unwrap();
+        Ok(Statement::Expression(expr))
+    }
+}
+
+impl Parser {
     pub fn from_tokens(tokens: Vec<Token>) -> Self {
         Parser { tokens, pos: 0 }
     }
 
-    pub fn parse(&mut self) -> (Vec<Expr>, Vec<ParserError>) {
+    pub fn parse_expr(&mut self) -> (Vec<Expr>, Vec<ParserError>) {
         let mut exprs = Vec::new();
         let mut errors = Vec::new();
 
