@@ -20,24 +20,32 @@ fn main() {
         eprintln!("Failed to read file {}", filename);
         String::new()
     });
-
+    let mut exit_code = 0;
     let (tokens, errors) = lex::Tokenizer::new(&file_contents).tokenize();
-    if command == "tokenize" {
-        for token in tokens.iter() {
-            println!("{}", token);
-        }
-    }
     if !errors.is_empty() {
         for error in errors {
             eprintln!("{}", error);
         }
-        std::process::exit(65);
+        exit_code = 65;
+    }
+    if command == "tokenize" {
+        for token in tokens.iter() {
+            println!("{}", token);
+        }
+        std::process::exit(exit_code);
     }
 
-    let (exprs, _errors) = parse::Parser::from_tokens(tokens).parse();
+    let (exprs, errors) = parse::Parser::from_tokens(tokens).parse();
+    if !errors.is_empty() {
+        for error in errors {
+            eprintln!("{}", error);
+        }
+        exit_code = 65;
+    }
     if command == "parse" {
         for expr in exprs.iter() {
             println!("{}", expr);
         }
+        std::process::exit(exit_code);
     }
 }

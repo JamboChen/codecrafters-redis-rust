@@ -41,8 +41,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
-        self.tokens
-            .push(Token::new(TokenType::Eof, "".to_string(), None));
+        self.tokens.push(self.new_token(TokenType::Eof, ""));
 
         (self.tokens, self.error)
     }
@@ -50,23 +49,23 @@ impl<'a> Tokenizer<'a> {
     fn next_token(&mut self) -> Result<Option<Token>, TokenizerError> {
         let c = self.next().unwrap();
         let token = match c {
-            '{' => Token::new(TokenType::LeftBrace, "{".to_string(), None),
-            '}' => Token::new(TokenType::RightBrace, "}".to_string(), None),
-            '(' => Token::new(TokenType::LeftParen, "(".to_string(), None),
-            ')' => Token::new(TokenType::RightParen, ")".to_string(), None),
-            ',' => Token::new(TokenType::Comma, ",".to_string(), None),
-            '.' => Token::new(TokenType::Dot, ".".to_string(), None),
-            '-' => Token::new(TokenType::Minus, "-".to_string(), None),
-            '+' => Token::new(TokenType::Plus, "+".to_string(), None),
-            ';' => Token::new(TokenType::Semicolon, ";".to_string(), None),
+            '{' => self.new_token(TokenType::LeftBrace, "{"),
+            '}' => self.new_token(TokenType::RightBrace, "}"),
+            '(' => self.new_token(TokenType::LeftParen, "("),
+            ')' => self.new_token(TokenType::RightParen, ")"),
+            ',' => self.new_token(TokenType::Comma, ","),
+            '.' => self.new_token(TokenType::Dot, "."),
+            '-' => self.new_token(TokenType::Minus, "-"),
+            '+' => self.new_token(TokenType::Plus, "+"),
+            ';' => self.new_token(TokenType::Semicolon, ";"),
             '/' => {
                 if let Some('/') = self.peek() {
                     self.skip_comment();
                     return Ok(None);
                 }
-                Token::new(TokenType::Slash, "/".to_string(), None)
+                self.new_token(TokenType::Slash, "/")
             }
-            '*' => Token::new(TokenType::Star, "*".to_string(), None),
+            '*' => self.new_token(TokenType::Star, "*"),
             '=' => self.combine_or('=', '=', TokenType::EqualEqual, TokenType::Equal),
             '!' => self.combine_or('!', '=', TokenType::BangEqual, TokenType::Bang),
             '<' => self.combine_or('<', '=', TokenType::LessEqual, TokenType::Less),
@@ -95,9 +94,9 @@ impl<'a> Tokenizer<'a> {
         }
 
         if let Some(token) = match_reserved(&identifier) {
-            return Ok(Token::new(token, identifier, None));
+            return Ok(self.new_token(token, &identifier));
         }
-        Ok(Token::new(TokenType::Identifier, identifier.clone(), None))
+        Ok(self.new_token(TokenType::Identifier, &identifier))
     }
 
     fn match_number(&mut self, curr: char) -> Result<Token, TokenizerError> {
@@ -130,6 +129,7 @@ impl<'a> Tokenizer<'a> {
             TokenType::Number,
             number.clone(),
             Some(Object::Number(number.parse().unwrap())),
+            self.line,
         ))
     }
 
@@ -141,6 +141,7 @@ impl<'a> Tokenizer<'a> {
                     TokenType::String,
                     format!("\"{}\"", string),
                     Some(Object::String(string)),
+                    self.line,
                 ));
             }
 
@@ -172,9 +173,9 @@ impl<'a> Tokenizer<'a> {
         match self.peek() {
             Some(c) if *c == with => {
                 self.next();
-                Token::new(combined, format!("{}{}", curr, with), None)
+                self.new_token(combined, &format!("{}{}", curr, with))
             }
-            _ => Token::new(single, curr.to_string(), None),
+            _ => self.new_token(single, &curr.to_string()),
         }
     }
 
@@ -192,6 +193,10 @@ impl<'a> Tokenizer<'a> {
 
     fn peek(&mut self) -> Option<&char> {
         self.source.peek()
+    }
+
+    fn new_token(&self, token_type: TokenType, lexeme: &str) -> Token {
+        Token::new(token_type, lexeme.to_string(), None, self.line)
     }
 }
 

@@ -3,8 +3,15 @@ use crate::{
     lex::{Token, TokenType},
 };
 use expr::Expr;
+use thiserror::Error;
 
 mod expr;
+
+#[derive(Error, Debug)]
+pub enum ParserError {
+    #[error("[line {0}] Error at '{1}': Expect expression.")]
+    UnexpectedToken(usize, String),
+}
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -16,25 +23,25 @@ impl Parser {
         Parser { tokens, pos: 0 }
     }
 
-    pub fn parse(&mut self) -> (Vec<Expr>, Vec<()>) {
+    pub fn parse(&mut self) -> (Vec<Expr>, Vec<ParserError>) {
         let mut exprs = Vec::new();
         let mut errors = Vec::new();
 
         while !self.is_at_end() {
             match self.expression() {
                 Ok(expr) => exprs.push(expr),
-                Err(_) => errors.push(()),
+                Err(e) => errors.push(e),
             }
         }
 
         (exprs, errors)
     }
 
-    fn expression(&mut self) -> Result<Expr, ()> {
+    fn expression(&mut self) -> Result<Expr, ParserError> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Result<Expr, ()> {
+    fn equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.comparison()?;
 
         while let TokenType::EqualEqual | TokenType::BangEqual = self.peek().0 {
@@ -46,7 +53,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Expr, ()> {
+    fn comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.term()?;
 
         while let TokenType::Greater
@@ -64,7 +71,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Expr, ()> {
+    fn term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.factor()?;
 
         while let TokenType::Minus | TokenType::Plus = self.peek().0 {
@@ -76,7 +83,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Expr, ()> {
+    fn factor(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.unary()?;
 
         while let TokenType::Star | TokenType::Slash = self.peek().0 {
@@ -88,19 +95,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Expr, ()> {
-        // let peeked = self.next().clone();
-        // match peeked.0 {
-        //     TokenType::Minus => {
-        //         let right = self.unary()?;
-        //         Ok(Expr::Unary(peeked, Box::new(right)))
-        //     }
-        //     TokenType::Bang => {
-        //         let right = self.unary()?;
-        //         Ok(Expr::Unary(peeked, Box::new(right)))
-        //     }
-        //     _ => self.primary(),
-        // }
+    fn unary(&mut self) -> Result<Expr, ParserError> {
         if let TokenType::Minus | TokenType::Bang = self.peek().0 {
             let operator = self.next().clone();
             let right = self.unary()?;
@@ -110,7 +105,7 @@ impl Parser {
         }
     }
 
-    fn primary(&mut self) -> Result<Expr, ()> {
+    fn primary(&mut self) -> Result<Expr, ParserError> {
         let peeked = self.next();
         let expr = match peeked.0 {
             TokenType::Number | TokenType::String => Expr::Literal(peeked.2.clone().unwrap()),
@@ -122,7 +117,7 @@ impl Parser {
                 self.expected(TokenType::RightParen).unwrap();
                 Expr::Grouping(Box::new(expr))
             }
-            _ => return Err(()),
+            _ => return Err(ParserError::UnexpectedToken(peeked.3, peeked.1.to_string())),
         };
 
         Ok(expr)
@@ -149,6 +144,6 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        self.pos >= self.tokens.len()
+        self.peek().0 == TokenType::Eof
     }
 }
