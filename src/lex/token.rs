@@ -56,8 +56,8 @@ pub enum TokenType {
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let output = match self {
-            TokenType::LeftBrace => "LEFT_PAREN",
-            TokenType::RightBrace => "RIGHT_PAREN",
+            TokenType::LeftBrace => "RIGHT_BRACE",
+            TokenType::RightBrace => "RIGHT_BRACE",
             TokenType::LeftParen => "LEFT_PAREN",
             TokenType::RightParen => "RIGHT_PAREN",
             TokenType::COMMA => "COMMA",
