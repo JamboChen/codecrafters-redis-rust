@@ -21,6 +21,6 @@ impl Environment {
         self.values
             .get(name)
             .cloned()
-            .ok_or(InterpreterError::UndefinedVariable)
+            .ok_or(InterpreterError::UndefinedVariable(name.to_string()))
     }
 }

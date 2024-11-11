@@ -14,8 +14,8 @@ use crate::{
 pub enum InterpreterError {
     #[error("Operand must be a {0}.")]
     TypeError(String),
-    #[error("Undefined variable.")]
-    UndefinedVariable,
+    #[error("Undefined variable '{0}'.")]
+    UndefinedVariable(String),
 }
 
 pub struct Interpreter {
