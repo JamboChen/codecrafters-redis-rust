@@ -1,10 +1,14 @@
 use std::fmt::Display;
 
-#[derive(Copy, Clone)]
-pub enum Object {}
+#[derive(Clone)]
+pub enum Object {
+    String(String),
+}
 
 impl Display for Object {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Ok(())
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Object::String(s) => write!(f, "{}", s),
+        }
     }
 }

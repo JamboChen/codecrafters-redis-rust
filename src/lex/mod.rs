@@ -5,10 +5,14 @@ use std::{iter::Peekable, str::Chars};
 use thiserror::Error;
 pub use token::{Token, TokenType};
 
+use crate::parse::Object;
+
 #[derive(Error, Debug)]
 pub enum TokenizerError {
     #[error("[line {0}] Error: Unexpected character: {1}")]
     UnexpectedCharacter(usize, char),
+    #[error("[line {0}] Error: Unterminated string.")]
+    UnexpectedString(usize),
 }
 
 pub struct Tokenizer<'a> {
@@ -67,11 +71,31 @@ impl<'a> Tokenizer<'a> {
             '!' => self.combine_or('!', '=', TokenType::BangEqual, TokenType::Bang),
             '<' => self.combine_or('<', '=', TokenType::LessEqual, TokenType::Less),
             '>' => self.combine_or('>', '=', TokenType::GreaterEqual, TokenType::Greater),
+            '"' => self.match_string()?,
             s if s.is_whitespace() => return Ok(None),
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
         Ok(Some(token))
+    }
+
+    fn match_string(&mut self) -> Result<Token, TokenizerError> {
+        let mut string = String::new();
+        while !self.is_at_end() {
+            match self.next() {
+                Some('"') => {
+                    return Ok(Token::new(
+                        TokenType::String,
+                        format!("\"{}\"", string),
+                        Some(Object::String(string)),
+                    ))
+                }
+                Some(c) => string.push(c),
+                None => return Err(TokenizerError::UnexpectedCharacter(self.line, '"')),
+            }
+        }
+
+        Err(TokenizerError::UnexpectedString(self.line))
     }
 
     fn skip_comment(&mut self) {
