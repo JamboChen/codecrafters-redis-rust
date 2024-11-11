@@ -56,10 +56,21 @@ impl<'a> Tokenizer<'a> {
             ';' => Token::new(TokenType::Semicolon, ";".to_string(), None),
             '/' => Token::new(TokenType::Slash, "/".to_string(), None),
             '*' => Token::new(TokenType::Star, "*".to_string(), None),
+            '=' => self.match_equal()?,
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
         Ok(token)
+    }
+
+    fn match_equal(&mut self) -> Result<Token, TokenizerError> {
+        match self.peek() {
+            Some('=') => {
+                self.next();
+                Ok(Token::new(TokenType::EqualEqual, "==".to_string(), None))
+            }
+            _ => Ok(Token::new(TokenType::Equal, "=".to_string(), None)),
+        }
     }
 
     fn is_at_end(&mut self) -> bool {
