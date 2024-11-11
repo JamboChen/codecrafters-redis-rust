@@ -30,6 +30,7 @@ pub enum Statement {
     Print(Expr),
     Expression(Expr),
     Var(String, Option<Expr>),
+    Block(Vec<Statement>),
 }
 
 impl Display for Statement {

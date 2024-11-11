@@ -74,8 +74,22 @@ impl Parser {
     fn statement(&mut self) -> Result<Statement, ParserError> {
         match self.peek().0 {
             TokenType::Print => self.print_statement(),
+            TokenType::LeftBrace => self.block_statement(),
             _ => self.expression_statement(),
         }
+    }
+
+    fn block_statement(&mut self) -> Result<Statement, ParserError> {
+        self.expected(TokenType::LeftBrace)?;
+        let mut stmts = Vec::new();
+
+        while self.peek().0 != TokenType::RightBrace && !self.is_at_end() {
+            stmts.push(self.declaration()?);
+        }
+
+        self.expected(TokenType::RightBrace)?;
+
+        Ok(Statement::Block(stmts))
     }
 
     fn print_statement(&mut self) -> Result<Statement, ParserError> {
