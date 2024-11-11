@@ -58,6 +58,8 @@ impl<'a> Tokenizer<'a> {
             '*' => Token::new(TokenType::Star, "*".to_string(), None),
             '=' => self.combine_or('=', '=', TokenType::EqualEqual, TokenType::Equal),
             '!' => self.combine_or('!', '=', TokenType::BangEqual, TokenType::Bang),
+            '<' => self.combine_or('<', '=', TokenType::LessEqual, TokenType::Less),
+            '>' => self.combine_or('>', '=', TokenType::GreaterEqual, TokenType::Greater),
             _ => return Err(TokenizerError::UnexpectedCharacter(self.line, c)),
         };
 
