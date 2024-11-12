@@ -62,6 +62,11 @@ impl Interpreter {
                     self.interpret(else_branch)?;
                 }
             }
+            Statement::While(cond, body) => {
+                while self.truthy(&self.evaluate(cond)?) {
+                    self.interpret(body)?;
+                }
+            }
         };
 
         Ok(())
@@ -106,14 +111,14 @@ impl Interpreter {
         op: &TokenType,
         right: &Expr,
     ) -> Result<Object, InterpreterError> {
-        let left =self.evaluate(left)?;
+        let left = self.evaluate(left)?;
         let left_truthy = self.truthy(&left);
 
         match (left_truthy, op) {
             (true, TokenType::Or) => Ok(left),
             (false, TokenType::Or) => Ok(self.evaluate(right)?),
             (true, TokenType::And) => Ok(self.evaluate(right)?),
-            (false, TokenType::And) =>Ok(left),
+            (false, TokenType::And) => Ok(left),
             _ => unreachable!(),
         }
     }

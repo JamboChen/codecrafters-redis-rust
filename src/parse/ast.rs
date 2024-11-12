@@ -34,6 +34,7 @@ pub enum Statement {
     Var(String, Option<Expr>),
     Block(Vec<Statement>),
     If(Expr, Box<Statement>, Option<Box<Statement>>),
+    While(Expr, Box<Statement>),
 }
 
 impl Display for Statement {

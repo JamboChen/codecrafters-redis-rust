@@ -76,8 +76,19 @@ impl Parser {
             TokenType::Print => self.print_statement(),
             TokenType::LeftBrace => self.block_statement(),
             TokenType::If => self.if_statment(),
+            TokenType::While => self.while_statment(),
             _ => self.expression_statement(),
         }
+    }
+
+    fn while_statment(&mut self) -> Result<Statement, ParserError> {
+        self.expected(TokenType::While)?;
+        self.expected(TokenType::LeftParen)?;
+        let condition = self.expression()?;
+        self.expected(TokenType::RightParen)?;
+        let body = Box::new(self.statement()?);
+
+        Ok(Statement::While(condition, body))
     }
 
     fn if_statment(&mut self) -> Result<Statement, ParserError> {
