@@ -54,6 +54,14 @@ impl Interpreter {
                     interpreter.interpret(stmt)?;
                 }
             }
+            Statement::If(cond, then_branch, else_branch) => {
+                let cond = self.evaluate(cond)?;
+                if self.truthy(&cond) {
+                    self.interpret(then_branch)?;
+                } else if let Some(else_branch) = else_branch {
+                    self.interpret(else_branch)?;
+                }
+            }
         };
 
         Ok(())

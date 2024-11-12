@@ -75,8 +75,25 @@ impl Parser {
         match self.peek().0 {
             TokenType::Print => self.print_statement(),
             TokenType::LeftBrace => self.block_statement(),
+            TokenType::If => self.if_statment(),
             _ => self.expression_statement(),
         }
+    }
+
+    fn if_statment(&mut self) -> Result<Statement, ParserError> {
+        self.expected(TokenType::If)?;
+        self.expected(TokenType::LeftParen)?;
+        let condition = self.expression()?;
+        self.expected(TokenType::RightParen)?;
+        let then_branch = Box::new(self.statement()?);
+        let else_branch = if self.peek().0 == TokenType::Else {
+            self.next();
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+
+        Ok(Statement::If(condition, then_branch, else_branch))
     }
 
     fn block_statement(&mut self) -> Result<Statement, ParserError> {
