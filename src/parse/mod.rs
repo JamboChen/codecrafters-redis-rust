@@ -133,7 +133,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Expr, ParserError> {
-        let expr = self.equality()?;
+        let expr = self.logic_or()?;
 
         if self.peek().0 == TokenType::Equal {
             self.next();
@@ -148,6 +148,26 @@ impl Parser {
         } else {
             Ok(expr)
         }
+    }
+
+    fn logic_or(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.logic_and()?;
+        while self.peek().0 == TokenType::Or {
+            let operator = self.next().clone();
+            let right = self.logic_and()?;
+            expr = Expr::Logical(Box::new(expr), operator, Box::new(right));
+        }
+        Ok(expr)
+    }
+
+    fn logic_and(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.equality()?;
+        while self.peek().0 == TokenType::And {
+            let operator = self.next().clone();
+            let right = self.equality()?;
+            expr = Expr::Logical(Box::new(expr), operator, Box::new(right));
+        }
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Expr, ParserError> {

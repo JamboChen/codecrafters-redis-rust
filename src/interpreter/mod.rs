@@ -96,9 +96,27 @@ impl Interpreter {
                 self.env.assign(name, value.clone())?;
                 Ok(value)
             }
+            Expr::Logical(left, op, right) => self.eval_logical(left, &op.0, right),
         }
     }
 
+    fn eval_logical(
+        &self,
+        left: &Expr,
+        op: &TokenType,
+        right: &Expr,
+    ) -> Result<Object, InterpreterError> {
+        let left =self.evaluate(left)?;
+        let left_truthy = self.truthy(&left);
+
+        match (left_truthy, op) {
+            (true, TokenType::Or) => Ok(left),
+            (false, TokenType::Or) => Ok(self.evaluate(right)?),
+            (true, TokenType::And) => Ok(self.evaluate(right)?),
+            (false, TokenType::And) =>Ok(left),
+            _ => unreachable!(),
+        }
+    }
     fn eval_binary(
         &self,
         left: &Expr,
@@ -158,6 +176,7 @@ fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, Inte
         TokenType::Less => Ok(Object::Boolean(left < right)),
         TokenType::LessEqual => Ok(Object::Boolean(left <= right)),
         TokenType::EqualEqual => Ok(Object::Boolean(left == right)),
+
         _ => Err(InterpreterError::TypeError("number".to_string())),
     }
 }

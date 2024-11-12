@@ -9,6 +9,7 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Variable(String),
     Assign(String, Box<Expr>),
+    Logical(Box<Expr>, Token, Box<Expr>),
 }
 
 impl Display for Expr {
@@ -20,6 +21,7 @@ impl Display for Expr {
             Expr::Grouping(expr) => format!("(group {})", expr),
             Expr::Variable(name) => name.to_string(),
             Expr::Assign(name, expr) => format!("(assign {} {})", name, expr),
+            Expr::Logical(left, token, right) => format!("({} {} {})", token.1, left, right),
         };
 
         write!(f, "{}", output)
