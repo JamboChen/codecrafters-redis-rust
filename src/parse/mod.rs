@@ -77,8 +77,48 @@ impl Parser {
             TokenType::LeftBrace => self.block_statement(),
             TokenType::If => self.if_statment(),
             TokenType::While => self.while_statment(),
+            TokenType::For => self.for_statment(),
             _ => self.expression_statement(),
         }
+    }
+
+    fn for_statment(&mut self) -> Result<Statement, ParserError> {
+        self.expected(TokenType::For)?;
+        self.expected(TokenType::LeftParen)?;
+        let init = match self.peek().0 {
+            TokenType::Semicolon => {
+                self.pos += 1;
+                None
+            }
+            TokenType::Var => Some(self.var_decl()?),
+            _ => Some(self.expression_statement()?),
+        };
+        let condition = match self.peek().0 {
+            TokenType::Semicolon => {
+                self.pos += 1;
+                Expr::Literal(Object::Boolean(true))
+            }
+            _ => self.expression()?,
+        };
+        self.expected(TokenType::Semicolon)?;
+        let increment = match self.peek().0 {
+            TokenType::RightParen => None,
+            _ => Some(self.expression()?),
+        };
+        self.expected(TokenType::RightParen)?;
+
+        let mut body = self.statement()?;
+        if let Some(increment) = increment {
+            body = Statement::Block(vec![body, Statement::Expression(increment)]);
+        }
+
+        body = Statement::While(condition, Box::new(body));
+
+        if let Some(init) = init {
+            body = Statement::Block(vec![init, body]);
+        }
+
+        Ok(body)
     }
 
     fn while_statment(&mut self) -> Result<Statement, ParserError> {
