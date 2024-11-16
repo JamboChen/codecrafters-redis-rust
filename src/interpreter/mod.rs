@@ -1,12 +1,16 @@
+mod callable;
 mod enviroment;
 mod object;
 
+use std::{rc::Rc, time::SystemTime};
+
+use callable::NativeFunction;
 use enviroment::Environment;
 pub use object::Object;
 use thiserror::Error;
 
 use crate::{
-    lex::TokenType,
+    lex::{Token, TokenType},
     parse::{Expr, Statement},
 };
 
@@ -24,9 +28,21 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter {
-            env: Environment::new(),
-        }
+        let env = Environment::new();
+        env.define(
+            "clock".to_string(),
+            Object::Callable(Rc::new(NativeFunction {
+                func: || {
+                    Ok(Object::Number(
+                        SystemTime::now()
+                            .duration_since(SystemTime::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as f64,
+                    ))
+                },
+            })),
+        );
+        Interpreter { env }
     }
 }
 
@@ -67,6 +83,11 @@ impl Interpreter {
                     self.interpret(body)?;
                 }
             }
+            Statement::Function(name, params, body) => {
+                let func = callable::LoxFunction::new(params, body);
+                self.env
+                    .define(name.clone(), Object::Callable(Rc::new(func)));
+            }
         };
 
         Ok(())
@@ -102,7 +123,27 @@ impl Interpreter {
                 Ok(value)
             }
             Expr::Logical(left, op, right) => self.eval_logical(left, &op.0, right),
+            Expr::Call(callee, paren, args) => self.eval_call(callee, paren, args),
         }
+    }
+
+    fn eval_call(
+        &self,
+        callee: &Expr,
+        paren: &Token,
+        args: &Vec<Expr>,
+    ) -> Result<Object, InterpreterError> {
+        let callee = self.evaluate(callee)?;
+        let mut arguments = Vec::new();
+        for arg in args {
+            arguments.push(self.evaluate(arg)?);
+        }
+
+        let Object::Callable(callable) = callee else {
+            return Err(InterpreterError::TypeError("callable".to_string()));
+        };
+
+        callable.call(self, &arguments)
     }
 
     fn eval_logical(

@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::{interpreter::Object, lex::Token};
 
+#[derive(Clone)]
 pub enum Expr {
     Literal(Object),
     Unary(Token, Box<Expr>),
@@ -10,6 +11,7 @@ pub enum Expr {
     Variable(String),
     Assign(String, Box<Expr>),
     Logical(Box<Expr>, Token, Box<Expr>),
+    Call(Box<Expr>, Token, Vec<Expr>),
 }
 
 impl Display for Expr {
@@ -22,12 +24,14 @@ impl Display for Expr {
             Expr::Variable(name) => name.to_string(),
             Expr::Assign(name, expr) => format!("(assign {} {})", name, expr),
             Expr::Logical(left, token, right) => format!("({} {} {})", token.1, left, right),
+            Expr::Call(_, _, _) => todo!(),
         };
 
         write!(f, "{}", output)
     }
 }
 
+#[derive(Clone)]
 pub enum Statement {
     Print(Expr),
     Expression(Expr),
@@ -35,6 +39,7 @@ pub enum Statement {
     Block(Vec<Statement>),
     If(Expr, Box<Statement>, Option<Box<Statement>>),
     While(Expr, Box<Statement>),
+    Function(String, Vec<Token>, Vec<Statement>),
 }
 
 impl Display for Statement {

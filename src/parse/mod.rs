@@ -52,8 +52,50 @@ impl Parser {
     fn declaration(&mut self) -> Result<Statement, ParserError> {
         match self.peek().0 {
             TokenType::Var => self.var_decl(),
+            TokenType::Fun => self.fun_decl(),
             _ => self.statement(),
         }
+    }
+
+    fn fun_decl(&mut self) -> Result<Statement, ParserError> {
+        self.expected(TokenType::Fun)?;
+        let name = self.expected(TokenType::Identifier)?.clone();
+        self.expected(TokenType::LeftParen)?;
+
+        let params = match self.peek().0 {
+            TokenType::RightParen => Vec::new(),
+            TokenType::Identifier => self.parameters()?,
+            _ => {
+                return Err(ParserError::UnexpectedToken(
+                    self.peek().3,
+                    self.peek().1.clone(),
+                ))
+            }
+        };
+
+        self.expected(TokenType::RightParen)?;
+
+        let Statement::Block(body) = self.block_statement()? else {
+            return Err(ParserError::UnexpectedToken(
+                self.peek().3,
+                self.peek().1.clone(),
+            ));
+        };
+
+        Ok(Statement::Function(name.1, params, body))
+    }
+
+    fn parameters(&mut self) -> Result<Vec<Token>, ParserError> {
+        let mut params = Vec::new();
+
+        params.push(self.expected(TokenType::Identifier)?.clone());
+
+        while let TokenType::Comma = self.peek().0 {
+            self.next();
+            params.push(self.expected(TokenType::Identifier)?.clone());
+        }
+
+        Ok(params)
     }
 
     fn var_decl(&mut self) -> Result<Statement, ParserError> {
@@ -281,8 +323,37 @@ impl Parser {
             let right = self.unary()?;
             Ok(Expr::Unary(operator, Box::new(right)))
         } else {
-            self.primary()
+            self.call()
         }
+    }
+
+    fn call(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.primary()?;
+
+        while let TokenType::LeftParen = self.peek().0 {
+            self.next();
+            let args = if let TokenType::RightParen = self.peek().0 {
+                Vec::new()
+            } else {
+                self.arguments()?
+            };
+            let paren = self.expected(TokenType::RightParen)?.clone();
+            expr = Expr::Call(Box::new(expr), paren, args);
+        }
+
+        Ok(expr)
+    }
+
+    fn arguments(&mut self) -> Result<Vec<Expr>, ParserError> {
+        let mut args = Vec::new();
+
+        args.push(self.expression()?);
+        while let TokenType::Comma = self.peek().0 {
+            self.next();
+            args.push(self.expression()?);
+        }
+
+        Ok(args)
     }
 
     fn primary(&mut self) -> Result<Expr, ParserError> {

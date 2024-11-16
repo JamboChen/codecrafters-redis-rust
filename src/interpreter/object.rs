@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, rc::Rc};
+
+use super::callable::LoxCallable;
 
 #[derive(Clone)]
 pub enum Object {
@@ -6,6 +8,7 @@ pub enum Object {
     Number(f64),
     Boolean(bool),
     Nil,
+    Callable(Rc<dyn LoxCallable>),
 }
 
 impl Display for Object {
@@ -21,6 +24,7 @@ impl Display for Object {
             }
             Object::Boolean(b) => b.to_string(),
             Object::Nil => "nil".to_string(),
+            Object::Callable(_) => "callable".to_string(),
         };
 
         write!(f, "{}", output)
