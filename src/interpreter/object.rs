@@ -1,5 +1,7 @@
 use std::{fmt::Display, rc::Rc};
 
+use crate::interpreter::callable;
+
 use super::callable::LoxCallable;
 
 #[derive(Clone)]
@@ -24,7 +26,7 @@ impl Display for Object {
             }
             Object::Boolean(b) => b.to_string(),
             Object::Nil => "nil".to_string(),
-            Object::Callable(_) => "callable".to_string(),
+            Object::Callable(callable) => callable.to_string(),
         };
 
         write!(f, "{}", output)

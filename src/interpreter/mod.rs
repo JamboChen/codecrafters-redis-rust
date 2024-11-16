@@ -32,6 +32,7 @@ impl Interpreter {
         env.define(
             "clock".to_string(),
             Object::Callable(Rc::new(NativeFunction {
+                name: "clock".to_string(),
                 func: || {
                     Ok(Object::Number(
                         SystemTime::now()
@@ -84,7 +85,7 @@ impl Interpreter {
                 }
             }
             Statement::Function(name, params, body) => {
-                let func = callable::LoxFunction::new(params, body);
+                let func = callable::LoxFunction::new(name, params, body);
                 self.env
                     .define(name.clone(), Object::Callable(Rc::new(func)));
             }
