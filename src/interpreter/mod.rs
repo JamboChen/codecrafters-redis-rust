@@ -48,7 +48,7 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&self, stmt: &Statement) -> Result<(), InterpreterError> {
+    pub fn interpret(&self, stmt: &Statement) -> Result<Option<Object>, InterpreterError> {
         match stmt {
             Statement::Expression(expr) => {
                 self.evaluate(expr)?;
@@ -73,15 +73,23 @@ impl Interpreter {
             }
             Statement::If(cond, then_branch, else_branch) => {
                 let cond = self.evaluate(cond)?;
-                if self.truthy(&cond) {
-                    self.interpret(then_branch)?;
+                let value = if self.truthy(&cond) {
+                    self.interpret(then_branch)?
                 } else if let Some(else_branch) = else_branch {
-                    self.interpret(else_branch)?;
+                    self.interpret(else_branch)?
+                } else {
+                    None
+                };
+
+                if let Some(value) = value {
+                    return Ok(Some(value));
                 }
             }
             Statement::While(cond, body) => {
                 while self.truthy(&self.evaluate(cond)?) {
-                    self.interpret(body)?;
+                    if let Some(value) = self.interpret(body)? {
+                        return Ok(Some(value));
+                    }
                 }
             }
             Statement::Function(name, params, body) => {
@@ -89,9 +97,16 @@ impl Interpreter {
                 self.env
                     .define(name.clone(), Object::Callable(Rc::new(func)));
             }
+            Statement::Return(_, expr) => {
+                let value = match expr {
+                    Some(expr) => self.evaluate(expr)?,
+                    None => Object::Nil,
+                };
+                return Ok(Some(value));
+            }
         };
 
-        Ok(())
+        Ok(None) // no return value
     }
 
     fn stringify(&self, obj: &Object) -> String {
@@ -131,7 +146,7 @@ impl Interpreter {
     fn eval_call(
         &self,
         callee: &Expr,
-        paren: &Token,
+        _paren: &Token,
         args: &Vec<Expr>,
     ) -> Result<Object, InterpreterError> {
         let callee = self.evaluate(callee)?;

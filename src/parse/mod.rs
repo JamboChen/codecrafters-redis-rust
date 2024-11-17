@@ -120,8 +120,21 @@ impl Parser {
             TokenType::If => self.if_statment(),
             TokenType::While => self.while_statment(),
             TokenType::For => self.for_statment(),
+            TokenType::Return => self.return_statment(),
             _ => self.expression_statement(),
         }
+    }
+
+    fn return_statment(&mut self) -> Result<Statement, ParserError> {
+        let keyword = self.expected(TokenType::Return)?.clone();
+        let expr = if self.peek().0 != TokenType::Semicolon {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.expected(TokenType::Semicolon)?;
+
+        Ok(Statement::Return(keyword, expr))
     }
 
     fn for_statment(&mut self) -> Result<Statement, ParserError> {

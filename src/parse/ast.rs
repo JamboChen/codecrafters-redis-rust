@@ -40,6 +40,7 @@ pub enum Statement {
     If(Expr, Box<Statement>, Option<Box<Statement>>),
     While(Expr, Box<Statement>),
     Function(String, Vec<Token>, Vec<Statement>),
+    Return(Token, Option<Expr>),
 }
 
 impl Display for Statement {

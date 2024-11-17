@@ -1,7 +1,5 @@
 use std::{fmt::Display, rc::Rc};
 
-use crate::interpreter::callable;
-
 use super::callable::LoxCallable;
 
 #[derive(Clone)]

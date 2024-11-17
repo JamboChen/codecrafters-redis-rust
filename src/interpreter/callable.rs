@@ -6,11 +6,12 @@ use super::{Environment, Interpreter, InterpreterError, Object, Statement};
 
 pub trait LoxCallable {
     fn name(&self) -> &str;
+    #[allow(dead_code)]
     fn arity(&self) -> usize;
     fn call(
         &self,
         interpreter: &Interpreter,
-        arguments: &Vec<Object>,
+        arguments: &[Object],
     ) -> Result<Object, InterpreterError>;
 }
 
@@ -22,11 +23,11 @@ pub struct LoxFunction {
 }
 
 impl LoxFunction {
-    pub fn new(name: &str, params: &Vec<Token>, body: &Vec<Statement>) -> Self {
+    pub fn new(name: &str, params: &[Token], body: &[Statement]) -> Self {
         LoxFunction {
             name: name.to_string(),
-            params: params.clone(),
-            body: body.clone(),
+            params: params.to_vec(),
+            body: body.to_vec(),
         }
     }
 }
@@ -43,7 +44,7 @@ impl LoxCallable for LoxFunction {
     fn call(
         &self,
         interpreter: &Interpreter,
-        arguments: &Vec<Object>,
+        arguments: &[Object],
     ) -> Result<Object, InterpreterError> {
         let env = Environment::new_enclosed(&interpreter.env);
 
@@ -53,7 +54,9 @@ impl LoxCallable for LoxFunction {
 
         let interpreter = Interpreter { env };
         for stmt in self.body.iter() {
-            interpreter.interpret(stmt)?;
+            if let Some(result) = interpreter.interpret(stmt)? {
+                return Ok(result);
+            }
         }
 
         Ok(Object::Nil)
@@ -77,7 +80,7 @@ impl LoxCallable for NativeFunction {
     fn call(
         &self,
         _interpreter: &Interpreter,
-        _arguments: &Vec<Object>,
+        _arguments: &[Object],
     ) -> Result<Object, InterpreterError> {
         (self.func)()
     }
