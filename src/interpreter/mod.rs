@@ -48,7 +48,17 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&self, stmt: &Statement) -> Result<Option<Object>, InterpreterError> {
+    pub fn interpret(&self, stmts: &[Statement]) -> Result<Option<Object>, InterpreterError> {
+        for stmt in stmts {
+            if let Some(value) = self.interpret_stmt(stmt)? {
+                return Ok(Some(value));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn interpret_stmt(&self, stmt: &Statement) -> Result<Option<Object>, InterpreterError> {
         match stmt {
             Statement::Expression(expr) => {
                 self.evaluate(expr)?;
@@ -67,16 +77,17 @@ impl Interpreter {
             Statement::Block(stmts) => {
                 let env = Environment::new_enclosed(&self.env);
                 let interpreter = Interpreter { env };
-                for stmt in stmts {
-                    interpreter.interpret(stmt)?;
+                match interpreter.interpret(stmts)? {
+                    Some(value) => return Ok(Some(value)),
+                    None => {}
                 }
             }
             Statement::If(cond, then_branch, else_branch) => {
                 let cond = self.evaluate(cond)?;
                 let value = if self.truthy(&cond) {
-                    self.interpret(then_branch)?
+                    self.interpret_stmt(then_branch)?
                 } else if let Some(else_branch) = else_branch {
-                    self.interpret(else_branch)?
+                    self.interpret_stmt(else_branch)?
                 } else {
                     None
                 };
@@ -87,13 +98,13 @@ impl Interpreter {
             }
             Statement::While(cond, body) => {
                 while self.truthy(&self.evaluate(cond)?) {
-                    if let Some(value) = self.interpret(body)? {
+                    if let Some(value) = self.interpret_stmt(body)? {
                         return Ok(Some(value));
                     }
                 }
             }
             Statement::Function(name, params, body) => {
-                let func = callable::LoxFunction::new(name, params, body);
+                let func = callable::LoxFunction::new(name, params, body, &self.env);
                 self.env
                     .define(name.clone(), Object::Callable(Rc::new(func)));
             }

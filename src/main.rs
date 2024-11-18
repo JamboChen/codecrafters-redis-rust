@@ -80,12 +80,9 @@ fn main() {
         }
 
         let interpreter = interpreter::Interpreter::new();
-        for stmt in exprs.iter() {
-            if let Err(e) = interpreter.interpret(stmt) {
-                eprintln!("{}", e);
-                exit_code = 70;
-                break;
-            }
+        if let Err(e) = interpreter.interpret(&exprs) {
+            eprintln!("{}", e);
+            exit_code = 70;
         }
 
         std::process::exit(exit_code);

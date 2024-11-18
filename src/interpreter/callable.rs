@@ -20,14 +20,16 @@ pub struct LoxFunction {
     name: String,
     params: Vec<Token>,
     body: Vec<Statement>,
+    closure: Environment,
 }
 
 impl LoxFunction {
-    pub fn new(name: &str, params: &[Token], body: &[Statement]) -> Self {
+    pub fn new(name: &str, params: &[Token], body: &[Statement], closure: &Environment) -> Self {
         LoxFunction {
             name: name.to_string(),
             params: params.to_vec(),
             body: body.to_vec(),
+            closure: closure.clone(),
         }
     }
 }
@@ -43,10 +45,10 @@ impl LoxCallable for LoxFunction {
 
     fn call(
         &self,
-        interpreter: &Interpreter,
+        _interpreter: &Interpreter,
         arguments: &[Object],
     ) -> Result<Object, InterpreterError> {
-        let env = Environment::new_enclosed(&interpreter.env);
+        let env = Environment::new_enclosed(&self.closure);
 
         for (param, arg) in self.params.iter().zip(arguments.iter()) {
             env.define(param.1.clone(), arg.clone());
@@ -54,7 +56,7 @@ impl LoxCallable for LoxFunction {
 
         let interpreter = Interpreter { env };
         for stmt in self.body.iter() {
-            if let Some(result) = interpreter.interpret(stmt)? {
+            if let Some(result) = interpreter.interpret_stmt(stmt)? {
                 return Ok(result);
             }
         }
