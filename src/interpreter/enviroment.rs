@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use super::{InterpreterError, Object};
+use super::{RuntimeError, Object};
 
 #[derive(Clone)]
 pub(super) struct Environment {
@@ -27,11 +27,11 @@ impl Environment {
         self.inner.borrow_mut().define(name, value);
     }
 
-    pub fn get(&self, name: &str) -> Result<Object, InterpreterError> {
+    pub fn get(&self, name: &str) -> Result<Object, RuntimeError> {
         self.inner.borrow().get(name)
     }
 
-    pub fn assign(&self, name: &str, value: Object) -> Result<(), InterpreterError> {
+    pub fn assign(&self, name: &str, value: Object) -> Result<(), RuntimeError> {
         self.inner.borrow_mut().assign(name, value)
     }
 }
@@ -53,24 +53,24 @@ impl EnvironmentImpl {
         self.values.insert(name, value);
     }
 
-    fn get(&self, name: &str) -> Result<Object, InterpreterError> {
+    fn get(&self, name: &str) -> Result<Object, RuntimeError> {
         if let Some(value) = self.values.get(name) {
             Ok(value.clone())
         } else if let Some(enclosing) = &self.enclosing {
             enclosing.get(name)
         } else {
-            Err(InterpreterError::UndefinedVariable(name.to_string()))
+            Err(RuntimeError::UndefinedVariable(name.to_string()))
         }
     }
 
-    fn assign(&mut self, name: &str, value: Object) -> Result<(), InterpreterError> {
+    fn assign(&mut self, name: &str, value: Object) -> Result<(), RuntimeError> {
         if self.values.contains_key(name) {
             self.values.insert(name.to_string(), value);
             Ok(())
         } else if let Some(enclosing) = &mut self.enclosing {
             enclosing.assign(name, value)
         } else {
-            Err(InterpreterError::UndefinedVariable(name.to_string()))
+            Err(RuntimeError::UndefinedVariable(name.to_string()))
         }
     }
 }

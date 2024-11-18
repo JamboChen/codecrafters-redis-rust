@@ -2,17 +2,14 @@ use std::fmt::Display;
 
 use crate::lex::Token;
 
-use super::{Environment, Interpreter, InterpreterError, Object, Statement};
+use super::{Environment, Interpreter, Object, RuntimeError, Statement};
 
 pub trait LoxCallable {
     fn name(&self) -> &str;
     #[allow(dead_code)]
     fn arity(&self) -> usize;
-    fn call(
-        &self,
-        interpreter: &Interpreter,
-        arguments: &[Object],
-    ) -> Result<Object, InterpreterError>;
+    fn call(&self, interpreter: &Interpreter, arguments: &[Object])
+        -> Result<Object, RuntimeError>;
 }
 
 #[derive(Clone)]
@@ -47,9 +44,15 @@ impl LoxCallable for LoxFunction {
         &self,
         _interpreter: &Interpreter,
         arguments: &[Object],
-    ) -> Result<Object, InterpreterError> {
+    ) -> Result<Object, RuntimeError> {
         let env = Environment::new_enclosed(&self.closure);
-
+        if self.params.len() != arguments.len() {
+            return Err(RuntimeError::TypeError(format!(
+                "Expected {} arguments but got {}.",
+                self.params.len(),
+                arguments.len()
+            )));
+        }
         for (param, arg) in self.params.iter().zip(arguments.iter()) {
             env.define(param.1.clone(), arg.clone());
         }
@@ -67,7 +70,7 @@ impl LoxCallable for LoxFunction {
 
 pub(super) struct NativeFunction {
     pub name: String,
-    pub func: fn() -> Result<Object, InterpreterError>,
+    pub func: fn() -> Result<Object, RuntimeError>,
 }
 
 impl LoxCallable for NativeFunction {
@@ -83,7 +86,7 @@ impl LoxCallable for NativeFunction {
         &self,
         _interpreter: &Interpreter,
         _arguments: &[Object],
-    ) -> Result<Object, InterpreterError> {
+    ) -> Result<Object, RuntimeError> {
         (self.func)()
     }
 }

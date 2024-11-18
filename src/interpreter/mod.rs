@@ -15,8 +15,8 @@ use crate::{
 };
 
 #[derive(Error, Debug)]
-pub enum InterpreterError {
-    #[error("Operand must be a {0}.")]
+pub enum RuntimeError {
+    #[error("{0}")]
     TypeError(String),
     #[error("Undefined variable '{0}'.")]
     UndefinedVariable(String),
@@ -48,7 +48,7 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn interpret(&self, stmts: &[Statement]) -> Result<Option<Object>, InterpreterError> {
+    pub fn interpret(&self, stmts: &[Statement]) -> Result<Option<Object>, RuntimeError> {
         for stmt in stmts {
             if let Some(value) = self.interpret_stmt(stmt)? {
                 return Ok(Some(value));
@@ -58,7 +58,7 @@ impl Interpreter {
         Ok(None)
     }
 
-    fn interpret_stmt(&self, stmt: &Statement) -> Result<Option<Object>, InterpreterError> {
+    fn interpret_stmt(&self, stmt: &Statement) -> Result<Option<Object>, RuntimeError> {
         match stmt {
             Statement::Expression(expr) => {
                 self.evaluate(expr)?;
@@ -130,14 +130,14 @@ impl Interpreter {
 }
 
 impl Interpreter {
-    pub fn eval(&self, expr: &Expr) -> Result<(), InterpreterError> {
+    pub fn eval(&self, expr: &Expr) -> Result<(), RuntimeError> {
         let value = self.evaluate(expr)?;
         println!("{}", self.stringify(&value));
 
         Ok(())
     }
 
-    fn evaluate(&self, expr: &Expr) -> Result<Object, InterpreterError> {
+    fn evaluate(&self, expr: &Expr) -> Result<Object, RuntimeError> {
         match expr {
             Expr::Literal(obj) => Ok(obj.clone()),
             Expr::Unary(op, right) => self.eval_unary(&op.0, right),
@@ -159,7 +159,7 @@ impl Interpreter {
         callee: &Expr,
         _paren: &Token,
         args: &Vec<Expr>,
-    ) -> Result<Object, InterpreterError> {
+    ) -> Result<Object, RuntimeError> {
         let callee = self.evaluate(callee)?;
         let mut arguments = Vec::new();
         for arg in args {
@@ -167,7 +167,7 @@ impl Interpreter {
         }
 
         let Object::Callable(callable) = callee else {
-            return Err(InterpreterError::TypeError("callable".to_string()));
+            return Err(RuntimeError::TypeError("callable".to_string()));
         };
 
         callable.call(self, &arguments)
@@ -178,7 +178,7 @@ impl Interpreter {
         left: &Expr,
         op: &TokenType,
         right: &Expr,
-    ) -> Result<Object, InterpreterError> {
+    ) -> Result<Object, RuntimeError> {
         let left = self.evaluate(left)?;
         let left_truthy = self.truthy(&left);
 
@@ -195,7 +195,7 @@ impl Interpreter {
         left: &Expr,
         op: &TokenType,
         right: &Expr,
-    ) -> Result<Object, InterpreterError> {
+    ) -> Result<Object, RuntimeError> {
         let left = self.evaluate(left)?;
         let right = self.evaluate(right)?;
 
@@ -206,16 +206,16 @@ impl Interpreter {
             (Object::String(l), TokenType::Plus, Object::String(r)) => {
                 Ok(Object::String(format!("{}{}", l, r)))
             }
-            _ => Err(InterpreterError::TypeError("number".to_string())),
+            _ => Err(RuntimeError::TypeError("Operand must be a number.".to_string())),
         }
     }
 
-    fn eval_unary(&self, op: &TokenType, right: &Expr) -> Result<Object, InterpreterError> {
+    fn eval_unary(&self, op: &TokenType, right: &Expr) -> Result<Object, RuntimeError> {
         let right = self.evaluate(right)?;
         match (op, &right) {
             (TokenType::Minus, Object::Number(n)) => Ok(Object::Number(-n)),
             (TokenType::Bang, _) => Ok(Object::Boolean(!self.truthy(&right))),
-            _ => Err(InterpreterError::TypeError("number".to_string())),
+            _ => Err(RuntimeError::TypeError("Operand must be a number.".to_string())),
         }
     }
 
@@ -238,7 +238,7 @@ fn eval_equal(left: &Object, right: &Object) -> bool {
     }
 }
 
-fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, InterpreterError> {
+fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, RuntimeError> {
     match op {
         TokenType::Plus => Ok(Object::Number(left + right)),
         TokenType::Minus => Ok(Object::Number(left - right)),
@@ -250,6 +250,6 @@ fn binary_number(left: &f64, op: &TokenType, right: &f64) -> Result<Object, Inte
         TokenType::LessEqual => Ok(Object::Boolean(left <= right)),
         TokenType::EqualEqual => Ok(Object::Boolean(left == right)),
 
-        _ => Err(InterpreterError::TypeError("number".to_string())),
+        _ => Err(RuntimeError::TypeError("Operand must be a number.".to_string())),
     }
 }
